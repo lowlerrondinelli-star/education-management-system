@@ -130,6 +130,21 @@ function exportDataset(type) {
         ["note", "备注"]
       ]
     },
+    attendance: {
+      file: "点名考勤.csv",
+      rows: flattenAttendanceRows(),
+      columns: [
+        ["lessonId", "课节编号"],
+        ["date", "日期"],
+        ["time", "时间"],
+        ["target", "班级/对象"],
+        ["student", "学员"],
+        ["status", "考勤状态"],
+        ["deduct", "是否消课"],
+        ["operator", "点名人"],
+        ["updatedAt", "点名时间"]
+      ]
+    },
     lessons: {
       file: "课表.csv",
       rows: appState.lessons,
@@ -213,6 +228,7 @@ function renderDataCenter() {
     ["课程资料", appState.courses?.length || 0, "courses", "导出课程"],
     ["教师资料", appState.teachers?.length || 0, "teachers", "导出教师"],
     ["教室资料", appState.rooms?.length || 0, "rooms", "导出教室"],
+    ["点名考勤", appState.attendance?.length || 0, "attendance", "导出考勤"],
     ["课表课节", appState.lessons.length, "lessons", "导出课表"],
     ["消课流水", appState.ledger.length, "ledger", "导出流水"]
   ];
@@ -232,7 +248,7 @@ function renderDataCenter() {
       <div class="section-body">
         ${renderNotice("data")}
         <div class="summary-grid compact-metrics">
-          <div class="metric"><span>数据表数量</span><strong>8</strong></div>
+          <div class="metric"><span>数据表数量</span><strong>9</strong></div>
           <div class="metric"><span>待上课节</span><strong>${pendingLessons}</strong></div>
           <div class="metric"><span>待收欠费</span><strong>${money(debtTotal)}</strong></div>
           <div class="metric"><span>存储方式</span><strong>本地</strong></div>

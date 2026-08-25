@@ -205,6 +205,10 @@ button {
   gap: 12px;
 }
 
+.compact-metrics {
+  margin-bottom: 14px;
+}
+
 .metric {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -572,6 +576,35 @@ tr:hover td {
   gap: 12px;
 }
 
+.data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.data-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+  display: grid;
+  gap: 12px;
+}
+
+.data-card div {
+  display: grid;
+  gap: 6px;
+}
+
+.data-card strong {
+  font-size: 28px;
+}
+
+.data-help {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .template-card {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -667,7 +700,8 @@ tr:hover td {
   .summary-grid,
   .excel-stats,
   .operation-grid,
-  .operation-grid.compact {
+  .operation-grid.compact,
+  .data-help {
     grid-template-columns: 1fr;
   }
 }

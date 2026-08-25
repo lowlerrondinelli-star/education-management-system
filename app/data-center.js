@@ -241,6 +241,36 @@ function exportDataset(type) {
         ["updatedAt", "更新时间"]
       ]
     },
+    studentDetails: {
+      file: "学员详情汇总.csv",
+      rows: typeof flattenStudentDetailRows === "function" ? flattenStudentDetailRows() : [],
+      columns: [
+        ["id", "学员编号"],
+        ["name", "学员姓名"],
+        ["phone", "手机号"],
+        ["grade", "年级"],
+        ["school", "学校"],
+        ["channel", "渠道"],
+        ["owner", "负责人"],
+        ["course", "课程"],
+        ["className", "班级"],
+        ["status", "状态"],
+        ["balance", "剩余课时"],
+        ["debt", "学员欠费"],
+        ["orderCount", "订单数"],
+        ["bought", "购买课时"],
+        ["gift", "赠送课时"],
+        ["used", "已上课时"],
+        ["remaining", "订单余额"],
+        ["paid", "累计实收"],
+        ["lessonCount", "相关课节"],
+        ["ledgerCount", "流水数"],
+        ["followUpStatus", "最近跟进"],
+        ["nextFollowUp", "下次跟进"],
+        ["latestAttendance", "最近考勤"],
+        ["latestLedger", "最近流水"]
+      ]
+    },
     reports: {
       file: "经营报表.csv",
       rows: typeof flattenOperationReportRows === "function" ? flattenOperationReportRows() : [],
@@ -329,6 +359,7 @@ function renderDataCenter() {
     ["课表课节", appState.lessons.length, "lessons", "导出课表"],
     ["排课冲突", typeof flattenScheduleConflictRows === "function" ? flattenScheduleConflictRows().length : 0, "scheduleConflicts", "导出冲突"],
     ["续费跟进", typeof flattenFollowUpRows === "function" ? flattenFollowUpRows().length : 0, "followUps", "导出跟进"],
+    ["学员详情汇总", typeof flattenStudentDetailRows === "function" ? flattenStudentDetailRows().length : 0, "studentDetails", "导出详情"],
     ["经营报表", typeof flattenOperationReportRows === "function" ? flattenOperationReportRows().length : 0, "reports", "导出报表"],
     ["消课流水", appState.ledger.length, "ledger", "导出流水"]
   ];
@@ -349,7 +380,7 @@ function renderDataCenter() {
         ${renderNotice("data")}
         ${typeof renderImportPanel === "function" ? renderImportPanel() : ""}
         <div class="summary-grid compact-metrics">
-          <div class="metric"><span>数据表数量</span><strong>15</strong></div>
+          <div class="metric"><span>数据表数量</span><strong>16</strong></div>
           <div class="metric"><span>待上课节</span><strong>${pendingLessons}</strong></div>
           <div class="metric"><span>待收欠费</span><strong>${money(debtTotal)}</strong></div>
           <div class="metric"><span>存储方式</span><strong>本地</strong></div>

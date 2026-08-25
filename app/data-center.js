@@ -268,6 +268,7 @@ function renderDataCenter() {
       </div>
       <div class="section-body">
         ${renderNotice("data")}
+        ${typeof renderImportPanel === "function" ? renderImportPanel() : ""}
         <div class="summary-grid compact-metrics">
           <div class="metric"><span>数据表数量</span><strong>10</strong></div>
           <div class="metric"><span>待上课节</span><strong>${pendingLessons}</strong></div>

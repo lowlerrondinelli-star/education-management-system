@@ -259,6 +259,96 @@ button {
   box-shadow: none;
 }
 
+.excel-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.excel-stats div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.excel-stats span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.excel-stats strong {
+  font-size: 18px;
+}
+
+.excel-grid .table-wrap {
+  max-height: 560px;
+  border: 1px solid var(--line);
+  border-radius: 0 0 8px 8px;
+}
+
+.excel-grid table {
+  min-width: max-content;
+}
+
+.excel-grid th {
+  z-index: 2;
+}
+
+.excel-grid th:first-child,
+.excel-grid td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #f8fafc;
+}
+
+.row-number {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.excel-cell {
+  min-width: 80px;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.excel-cell-long {
+  min-width: 220px;
+  max-width: 420px;
+  max-height: 120px;
+  white-space: pre-wrap;
+  overflow: auto;
+  line-height: 1.45;
+}
+
+.note-head {
+  margin-top: 16px;
+}
+
+.excel-notes {
+  border: 1px solid var(--line);
+  border-radius: 0 0 8px 8px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.excel-notes pre {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  font-family: inherit;
+  color: var(--ink);
+  max-height: 260px;
+  overflow: auto;
+}
+
 .section-body {
   padding: 16px;
 }
@@ -514,7 +604,8 @@ tr:hover td {
   }
 
   .layout-two,
-  .summary-grid {
+  .summary-grid,
+  .excel-stats {
     grid-template-columns: 1fr;
   }
 }

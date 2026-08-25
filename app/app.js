@@ -238,6 +238,10 @@ function dashboardTaskCard(title, detail, tone, action, goView) {
   </div>`;
 }
 
+function dashboardCanAccess(view) {
+  return typeof canAccessView !== "function" || canAccessView(view);
+}
+
 function renderDashboard() {
   const debtTotal = appState.orders.reduce((sum, order) => sum + Number(order.debt || 0), 0);
   const lowBalance = appState.students.filter((student) => Number(student.balance) > 0 && Number(student.balance) <= 3).length;
@@ -271,7 +275,9 @@ function renderDashboard() {
     ...lowBalanceStudents.map((student) => ({ title: `${student.name} 课时不足`, detail: `剩余 ${student.balance} 课时，建议提醒续费`, tone: "amber", go: "followUp", action: "去跟进" })),
     ...(overdueLessons ? [{ title: `${overdueLessons} 节课未处理`, detail: "存在早于今天但仍为待上课的课节，请核对是否需要补点名。", tone: "red", go: "schedule", action: "看课表" }] : []),
     { title: "导入前校验", detail: "手机号、日期、课时、金额、字典值必须先检查", tone: "", go: "data", action: "去导入" }
-  ].slice(0, 8);
+  ]
+    .filter((item) => !item.go || dashboardCanAccess(item.go))
+    .slice(0, 8);
 
   appContent.innerHTML = `
     <section class="dashboard-hero">
@@ -307,7 +313,7 @@ function renderDashboard() {
       <section class="section">
         <div class="section-head"><h3>待办提醒</h3><span>${tag(`${reminders.length} 项`, reminders.length ? "amber" : "green")}</span></div>
         <div class="section-body stack-list">
-          ${reminders.map((item) => dashboardTaskCard(item.title, item.detail, item.tone, item.action, item.go)).join("")}
+          ${reminders.map((item) => dashboardTaskCard(item.title, item.detail, item.tone, item.action, item.go)).join("") || `<div class="stack-item"><strong>暂无当前账号可处理提醒</strong><span class="muted">需要处理的教学事项会优先显示在上方统一待办。</span></div>`}
         </div>
       </section>
     </div>`;

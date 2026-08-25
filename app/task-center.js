@@ -65,6 +65,53 @@ function taskCenterPriorityTone(priority) {
   return "green";
 }
 
+function taskCenterRoleNames() {
+  if (typeof authRoleNames === "function") return authRoleNames();
+  return [];
+}
+
+function taskCenterCanViewModule(viewId) {
+  return typeof canAccessView !== "function" || canAccessView(viewId);
+}
+
+function taskCenterCanViewAllTeaching() {
+  return taskCenterRoleNames().some((role) => ["校长/管理员", "教务/学管师"].includes(role));
+}
+
+function taskCenterCurrentEmployee() {
+  return typeof currentAuthEmployee === "function" ? currentAuthEmployee() : null;
+}
+
+function taskCenterCurrentTeacherName() {
+  const employee = taskCenterCurrentEmployee();
+  if (employee?.isTeacher === "是" || text(employee?.roles).includes("教师")) return employee.name;
+  return "";
+}
+
+function taskCenterCanHandleLesson(lesson) {
+  if (taskCenterCanViewAllTeaching()) return true;
+  const teacherName = taskCenterCurrentTeacherName();
+  return !teacherName || lesson.teacher === teacherName;
+}
+
+function taskCenterCanHandleTask(task) {
+  if (!taskCenterCanViewModule(task.module)) return false;
+  if (task.lessonId) {
+    const lesson = appState.lessons.find((item) => item.id === task.lessonId);
+    if (lesson && !taskCenterCanHandleLesson(lesson)) return false;
+  }
+  return true;
+}
+
+function normalizeTaskCenterFilters(tasks) {
+  const types = new Set(tasks.map((task) => task.type));
+  const owners = new Set(tasks.map((task) => task.owner));
+  const priorities = new Set(tasks.map((task) => task.priority));
+  if (taskCenterTypeFilter !== "all" && !types.has(taskCenterTypeFilter)) taskCenterTypeFilter = "all";
+  if (taskCenterOwnerFilter !== "all" && !owners.has(taskCenterOwnerFilter)) taskCenterOwnerFilter = "all";
+  if (taskCenterPriorityFilter !== "all" && !priorities.has(taskCenterPriorityFilter)) taskCenterPriorityFilter = "all";
+}
+
 function taskCenterLessonHasAttendance(lesson) {
   const record = appState.attendance?.find((item) => item.lessonId === lesson.id);
   return Boolean(record?.updatedAt || record?.locked);
@@ -86,6 +133,7 @@ function taskCenterFollowUpTasks() {
   if (typeof activeFollowUps !== "function") return [];
   return activeFollowUps().map((item) => ({
     id: `follow:${item.id}`,
+    module: "followUp",
     type: "跟进",
     priority: item.priority || (item.dueDate <= todayIsoDate() ? "高" : "中"),
     owner: item.owner || "未分配",
@@ -106,6 +154,8 @@ function taskCenterAttendanceTasks() {
     .filter((lesson) => lesson.status === "待上课" && !taskCenterLessonHasAttendance(lesson))
     .map((lesson) => ({
       id: `attendance:${lesson.id}`,
+      module: "schedule",
+      lessonId: lesson.id,
       type: "点名",
       priority: taskCenterLessonPriority(lesson),
       owner: lesson.teacher || "任课老师",
@@ -125,6 +175,8 @@ function taskCenterFeedbackTasks() {
   const pendingLessons = typeof pendingFeedbackLessons === "function" ? pendingFeedbackLessons() : [];
   const lessonTasks = pendingLessons.map((lesson) => ({
     id: `feedback:${lesson.id}`,
+    module: "feedback",
+    lessonId: lesson.id,
     type: "反馈",
     priority: lesson.date <= todayIsoDate() ? "高" : "中",
     owner: lesson.teacher || "任课老师",
@@ -141,6 +193,8 @@ function taskCenterFeedbackTasks() {
   const drafts = typeof draftFeedbacks === "function" ? draftFeedbacks() : [];
   const draftTasks = drafts.map((item) => ({
     id: `feedbackDraft:${item.id}`,
+    module: "feedback",
+    lessonId: item.lessonId,
     type: "反馈",
     priority: item.risk === "高" ? "高" : "中",
     owner: item.operator || item.teacher || "任课老师",
@@ -167,6 +221,7 @@ function taskCenterOrderTasks() {
     if (debt > 0 && order.status !== "已作废") {
       tasks.push({
         id: `debt:${order.id}`,
+        module: "orders",
         type: "收款",
         priority: "高",
         owner,
@@ -184,6 +239,7 @@ function taskCenterOrderTasks() {
     if (remaining > 0 && remaining <= 3 && order.status !== "已作废") {
       tasks.push({
         id: `renew:${order.id}`,
+        module: "followUp",
         type: "续费",
         priority: "中",
         owner,
@@ -208,6 +264,7 @@ function taskCenterLeaveTasks() {
   return (appState.leaveRequests || [])
     .filter((item) => ["待审批", "待补课", "已批准", "已安排补课"].includes(item.status))
     .map((item) => {
+      const lesson = appState.lessons.find((lessonItem) => lessonItem.id === item.lessonId);
       const priority = item.status === "待审批" || item.status === "待补课" ? "高" : "中";
       const action =
         item.status === "待审批"
@@ -218,9 +275,11 @@ function taskCenterLeaveTasks() {
 
       return {
         id: `leave:${item.id}`,
+        module: "leaves",
+        lessonId: item.lessonId || "",
         type: "请假",
         priority,
-        owner: item.operator || "前台老师",
+        owner: lesson?.teacher || item.operator || "前台老师",
         dueDate: item.lessonDate || todayIsoDate(),
         title: `${item.student} ${item.status}`,
         subtitle: `${item.lessonDate || ""} ${item.lessonTime || ""}`.trim(),
@@ -329,16 +388,60 @@ function renderTaskCenterRows(tasks) {
   </tr>`);
 }
 
+function cleanDashboardReminderPermissions() {
+  const reminderSection = [...appContent.querySelectorAll(".section")].find((section) => section.querySelector(".section-head h3")?.textContent === "待办提醒");
+  if (!reminderSection) return;
+
+  reminderSection.querySelectorAll(".dashboard-task").forEach((item) => {
+    const goView = item.querySelector("[data-go]")?.dataset.go;
+    if (goView && !taskCenterCanViewModule(goView)) item.remove();
+  });
+
+  const tasks = [...reminderSection.querySelectorAll(".dashboard-task")];
+  const countTag = reminderSection.querySelector(".section-head .tag");
+  if (countTag) {
+    countTag.textContent = `${tasks.length} 项`;
+    countTag.className = `tag ${tasks.length ? "amber" : "green"}`;
+  }
+
+  const body = reminderSection.querySelector(".section-body");
+  if (body && !tasks.length && !body.querySelector(".stack-item")) {
+    body.insertAdjacentHTML("beforeend", `<div class="stack-item"><strong>暂无当前账号可处理提醒</strong><span class="muted">需要处理的教学事项会优先显示在上方统一待办。</span></div>`);
+  }
+}
+
+function cleanDashboardSummaryForPermissions() {
+  const summary = appContent.querySelector(".dashboard-summary");
+  if (!summary) return;
+  const shouldUseTeachingSummary = !taskCenterCanViewModule("orders") && !taskCenterCanViewModule("followUp");
+  if (!shouldUseTeachingSummary) return;
+
+  const lessons = appState.lessons.filter((lesson) => lesson.status === "待上课" && taskCenterCanHandleLesson(lesson));
+  const todayLessons = lessons.filter((lesson) => lesson.date === todayIsoDate());
+  const tasks = buildTaskCenterRows().filter(taskCenterCanHandleTask);
+  const attendanceTasks = tasks.filter((task) => task.type === "点名").length;
+  const feedbackTasks = tasks.filter((task) => task.type === "反馈").length;
+  const leaveTasks = tasks.filter((task) => task.type === "请假").length;
+
+  summary.innerHTML = `
+    <div class="metric"><span>今日待上</span><strong>${todayLessons.length}</strong><small>${lessons.length} 节未完成</small></div>
+    <div class="metric"><span>待点名</span><strong>${attendanceTasks}</strong><small>当前账号可处理</small></div>
+    <div class="metric"><span>待反馈</span><strong>${feedbackTasks}</strong><small>已上课未发送</small></div>
+    <div class="metric"><span>请假补课</span><strong>${leaveTasks}</strong><small>需要协同处理</small></div>`;
+}
+
 function appendTaskCenterPanel() {
   if (currentView !== "dashboard" || appContent.querySelector(".task-center-panel")) return;
-  const tasks = buildTaskCenterRows();
+  const allTasks = buildTaskCenterRows();
+  const tasks = allTasks.filter(taskCenterCanHandleTask);
+  normalizeTaskCenterFilters(tasks);
   const visibleTasks = tasks.filter(taskCenterMatches).sort(compareTaskCenterRows);
   const section = `
     <section class="section task-center-panel">
       <div class="section-head">
         <div>
           <h3>今日统一待办</h3>
-          <span class="muted">把跟进、点名、反馈、收款、请假集中到一张清单，适合每天先从这里开工。</span>
+          <span class="muted">按当前账号权限显示可处理事项，老师每天可以直接从这里开工。</span>
         </div>
         ${tag(`${visibleTasks.length} 项`, visibleTasks.length ? "amber" : "green")}
       </div>
@@ -360,10 +463,19 @@ function appendTaskCenterPanel() {
 const baseRenderDashboardForTaskCenter = renderDashboard;
 renderDashboard = function renderDashboardWithTaskCenter() {
   baseRenderDashboardForTaskCenter();
+  cleanDashboardSummaryForPermissions();
+  cleanDashboardReminderPermissions();
   appendTaskCenterPanel();
 };
 
 document.addEventListener("change", (event) => {
+  if (event.target.id === "authUserSelect") {
+    taskCenterTypeFilter = "all";
+    taskCenterOwnerFilter = "all";
+    taskCenterPriorityFilter = "all";
+    taskCenterSortMode = "priority";
+  }
+
   if (event.target.id === "taskCenterTypeFilter") taskCenterTypeFilter = event.target.value;
   if (event.target.id === "taskCenterOwnerFilter") taskCenterOwnerFilter = event.target.value;
   if (event.target.id === "taskCenterPriorityFilter") taskCenterPriorityFilter = event.target.value;

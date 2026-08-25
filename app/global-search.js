@@ -72,6 +72,35 @@ function highlightSearch(value, keyword) {
   return `${escapeHtml(source.slice(0, index))}<span class="search-highlight">${escapeHtml(source.slice(index, index + keyword.length))}</span>${escapeHtml(source.slice(index + keyword.length))}`;
 }
 
+function searchCanViewModule(viewId) {
+  return typeof canAccessView !== "function" || canAccessView(viewId);
+}
+
+function searchRoleNames() {
+  if (typeof authRoleNames === "function") return authRoleNames();
+  return [];
+}
+
+function searchCanViewAllTeaching() {
+  return searchRoleNames().some((role) => ["校长/管理员", "教务/学管师"].includes(role));
+}
+
+function searchCurrentTeacherName() {
+  const employee = typeof currentAuthEmployee === "function" ? currentAuthEmployee() : null;
+  if (employee?.isTeacher === "是" || text(employee?.roles).includes("教师")) return employee.name;
+  return "";
+}
+
+function searchCanViewLesson(lesson) {
+  if (searchCanViewAllTeaching()) return true;
+  const teacherName = searchCurrentTeacherName();
+  return !teacherName || lesson.teacher === teacherName;
+}
+
+function searchLessonById(lessonId) {
+  return appState.lessons.find((lesson) => lesson.id === lessonId);
+}
+
 function resultCard({ type, title, meta, tags = [], actions = [] }, keyword) {
   return `<article class="search-result-card">
     <div class="global-search-summary">
@@ -85,6 +114,7 @@ function resultCard({ type, title, meta, tags = [], actions = [] }, keyword) {
 }
 
 function buildStudentSearchResults(keyword) {
+  if (!searchCanViewModule("students")) return [];
   return appState.students
     .filter((student) => searchHaystack([student.name, student.phone, student.grade, student.school, student.className, student.course, student.owner, student.status]).includes(keyword))
     .map((student) => ({
@@ -101,6 +131,7 @@ function buildStudentSearchResults(keyword) {
 }
 
 function buildOrderSearchResults(keyword) {
+  if (!searchCanViewModule("orders")) return [];
   return appState.orders
     .filter((order) => searchHaystack([order.id, order.student, order.course, order.className, order.owner, order.payMethod, order.expireAt]).includes(keyword))
     .map((order) => {
@@ -116,6 +147,7 @@ function buildOrderSearchResults(keyword) {
 }
 
 function buildClassSearchResults(keyword) {
+  if (!searchCanViewModule("classes")) return [];
   return appState.classes
     .filter((item) => searchHaystack([item.name, item.course, item.teacher, item.assistant, item.room, item.stage, item.status]).includes(keyword))
     .map((item) => ({
@@ -128,7 +160,9 @@ function buildClassSearchResults(keyword) {
 }
 
 function buildLessonSearchResults(keyword) {
+  if (!searchCanViewModule("schedule")) return [];
   return appState.lessons
+    .filter(searchCanViewLesson)
     .filter((lesson) => searchHaystack([lesson.id, lesson.date, lesson.time, lesson.target, lesson.subject, lesson.teacher, lesson.room, lesson.status]).includes(keyword))
     .map((lesson) => ({
       type: "课节",
@@ -144,6 +178,7 @@ function buildLessonSearchResults(keyword) {
 }
 
 function buildFollowUpSearchResults(keyword) {
+  if (!searchCanViewModule("followUp")) return [];
   const rows = typeof flattenFollowUpRows === "function" ? flattenFollowUpRows() : [];
   return rows
     .filter((item) => searchHaystack([item.student, item.phone, item.type, item.owner, item.status, item.result, item.note, item.dueDate]).includes(keyword))
@@ -157,8 +192,13 @@ function buildFollowUpSearchResults(keyword) {
 }
 
 function buildFeedbackSearchResults(keyword) {
+  if (!searchCanViewModule("feedback")) return [];
   const rows = typeof flattenFeedbackRows === "function" ? flattenFeedbackRows() : [];
   return rows
+    .filter((item) => {
+      const lesson = searchLessonById(item.lessonId);
+      return !lesson || searchCanViewLesson(lesson);
+    })
     .filter((item) => searchHaystack([item.student, item.target, item.subject, item.teacher, item.performance, item.parentMessage, item.risk, item.status]).includes(keyword))
     .map((item) => ({
       type: "反馈",
@@ -170,6 +210,7 @@ function buildFeedbackSearchResults(keyword) {
 }
 
 function buildLeadSearchResults(keyword) {
+  if (!searchCanViewModule("leads")) return [];
   const rows = typeof flattenLeadRows === "function" ? flattenLeadRows() : appState.leads || [];
   return rows
     .filter((item) => searchHaystack([item.name, item.student, item.phone, item.grade, item.course, item.owner, item.status, item.source, item.note]).includes(keyword))
@@ -182,6 +223,24 @@ function buildLeadSearchResults(keyword) {
     }));
 }
 
+function buildLeaveSearchResults(keyword) {
+  if (!searchCanViewModule("leaves")) return [];
+  const rows = typeof flattenLeaveRows === "function" ? flattenLeaveRows() : appState.leaveRequests || [];
+  return rows
+    .filter((item) => {
+      const lesson = searchLessonById(item.lessonId);
+      return !lesson || searchCanViewLesson(lesson);
+    })
+    .filter((item) => searchHaystack([item.student, item.target, item.lessonDate, item.lessonTime, item.leaveType, item.reason, item.status, item.operator]).includes(keyword))
+    .map((item) => ({
+      type: "请假",
+      title: `${item.student} ${item.status}`,
+      meta: `${item.lessonDate || "-"} ${item.lessonTime || ""} / ${item.target || "-"} / ${item.reason || item.makeupPlan || "-"}`,
+      tags: [tag(item.leaveType || "请假", ""), tag(item.status || "待处理", statusTone(item.status))],
+      actions: [`<button class="small-button" type="button" data-go="leaves">查看请假</button>`]
+    }));
+}
+
 function buildGlobalSearchResults(keyword) {
   return [
     ...buildStudentSearchResults(keyword),
@@ -190,7 +249,8 @@ function buildGlobalSearchResults(keyword) {
     ...buildLessonSearchResults(keyword),
     ...buildFollowUpSearchResults(keyword),
     ...buildFeedbackSearchResults(keyword),
-    ...buildLeadSearchResults(keyword)
+    ...buildLeadSearchResults(keyword),
+    ...buildLeaveSearchResults(keyword)
   ];
 }
 
@@ -204,7 +264,7 @@ function renderGlobalSearchPanel() {
       <div class="section-head">
         <div>
           <h3>全局搜索结果</h3>
-          <span class="muted">已在学员、订单、班级、课表、跟进、反馈和线索中查找。</span>
+          <span class="muted">已按当前账号权限在可访问数据中查找。</span>
         </div>
         <span>${tag(`${results.length} 条`, results.length ? "green" : "amber")}</span>
       </div>

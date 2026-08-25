@@ -10,6 +10,8 @@ vendor/
 dist/
 build/
 coverage/
+output/
+.playwright-cli/
 
 # 日志
 *.log

@@ -94,11 +94,45 @@ classProfileStyle.textContent = `
     border-radius: 8px;
   }
 
+  .class-list-summary {
+    margin-bottom: 14px;
+  }
+
+  .class-filter-toolbar {
+    align-items: end;
+  }
+
+  .class-filter-toolbar label {
+    display: grid;
+    gap: 5px;
+    color: var(--muted);
+    font-size: 12px;
+    min-width: 150px;
+  }
+
+  .class-filter-toolbar select {
+    color: var(--ink);
+    min-width: 0;
+  }
+
+  .class-risk-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: 260px;
+  }
+
   @media (max-width: 900px) {
     .class-summary,
     .class-profile-grid,
     .class-facts {
       grid-template-columns: 1fr;
+    }
+
+    .class-filter-toolbar,
+    .class-filter-toolbar label,
+    .class-filter-toolbar select {
+      width: 100%;
     }
   }
 `;
@@ -108,6 +142,11 @@ const classProfileDialog = document.createElement("dialog");
 classProfileDialog.id = "classProfileDialog";
 classProfileDialog.className = "dialog class-profile-dialog";
 document.body.appendChild(classProfileDialog);
+
+let classStatusFilter = "all";
+let classTeacherFilter = "all";
+let classRiskFilter = "all";
+let classSortMode = "risk";
 
 function classByName(className) {
   return appState.classes.find((item) => item.name === className);
@@ -126,6 +165,138 @@ function classLessons(classItem) {
     .filter((lesson) => lesson.target === classItem.name)
     .slice()
     .sort((first, second) => `${first.date} ${first.time}`.localeCompare(`${second.date} ${second.time}`));
+}
+
+function classStudentCount(classItem) {
+  return classStudents(classItem).length;
+}
+
+function classCapacityRate(classItem, count = classStudentCount(classItem)) {
+  const capacity = Number(classItem.capacity || 0);
+  if (!capacity) return 0;
+  return Math.round((count / capacity) * 100);
+}
+
+function classDebtTotal(classItem) {
+  return classOrders(classItem).reduce((sum, order) => sum + Number(order.debt || 0), 0);
+}
+
+function classPendingLessonCount(classItem) {
+  return classLessons(classItem).filter((lesson) => lesson.status === "待上课").length;
+}
+
+function classRiskReasons(classItem) {
+  const reasons = [];
+  const count = classStudentCount(classItem);
+  const capacity = Number(classItem.capacity || 0);
+  const debt = classDebtTotal(classItem);
+  const pendingLessons = classPendingLessonCount(classItem);
+  const rate = classCapacityRate(classItem, count);
+
+  if (capacity && count >= capacity) reasons.push({ key: "full", label: "已满班", tone: "red" });
+  else if (capacity && rate >= 80) reasons.push({ key: "nearFull", label: "接近满班", tone: "amber" });
+  if (count === 0) reasons.push({ key: "empty", label: "空班", tone: "amber" });
+  if (debt > 0) reasons.push({ key: "debt", label: "有欠费", tone: "red" });
+  if (classItem.status === "开课中" && pendingLessons === 0) reasons.push({ key: "noSchedule", label: "待排课", tone: "amber" });
+
+  return reasons;
+}
+
+function classHasRisk(classItem, riskKey) {
+  if (riskKey === "all") return true;
+  if (riskKey === "none") return classRiskReasons(classItem).length === 0;
+  return classRiskReasons(classItem).some((reason) => reason.key === riskKey);
+}
+
+function classMatchesListFilters(classItem) {
+  if (!matchesRow(classItem)) return false;
+  if (classStatusFilter !== "all" && classItem.status !== classStatusFilter) return false;
+  if (classTeacherFilter !== "all" && classItem.teacher !== classTeacherFilter) return false;
+  return classHasRisk(classItem, classRiskFilter);
+}
+
+function classRiskScore(classItem) {
+  const weights = { full: 1, debt: 2, noSchedule: 3, nearFull: 4, empty: 5 };
+  const scores = classRiskReasons(classItem).map((reason) => weights[reason.key] || 9);
+  return Math.min(...scores, 99);
+}
+
+function compareClassesForList(left, right) {
+  if (classSortMode === "name") return text(left.name).localeCompare(text(right.name), "zh-CN");
+  if (classSortMode === "teacher") return text(left.teacher).localeCompare(text(right.teacher), "zh-CN") || text(left.name).localeCompare(text(right.name), "zh-CN");
+  if (classSortMode === "fillDesc") return classCapacityRate(right) - classCapacityRate(left);
+  if (classSortMode === "pendingDesc") return classPendingLessonCount(right) - classPendingLessonCount(left);
+
+  const riskGap = classRiskScore(left) - classRiskScore(right);
+  if (riskGap) return riskGap;
+  return text(left.status).localeCompare(text(right.status), "zh-CN") || text(left.name).localeCompare(text(right.name), "zh-CN");
+}
+
+function renderClassRiskTags(classItem) {
+  const reasons = classRiskReasons(classItem);
+  if (!reasons.length) return tag("正常", "green");
+  return `<div class="class-risk-tags">${reasons.map((reason) => tag(reason.label, reason.tone)).join("")}</div>`;
+}
+
+function classSelectOptions(values, selectedValue, allLabel) {
+  return [
+    `<option value="all" ${selectedValue === "all" ? "selected" : ""}>${escapeHtml(allLabel)}</option>`,
+    ...values.map((value) => `<option value="${escapeHtml(value)}" ${selectedValue === value ? "selected" : ""}>${escapeHtml(value)}</option>`)
+  ].join("");
+}
+
+function renderClassFilterToolbar() {
+  const statuses = [...new Set(appState.classes.map((item) => item.status).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-CN"));
+  const teachers = [...new Set(appState.classes.map((item) => item.teacher).filter(Boolean))].sort((a, b) => a.localeCompare(b, "zh-CN"));
+
+  return `
+    <div class="filters class-filter-toolbar">
+      <label>状态
+        <select id="classStatusFilter" aria-label="按状态筛选班级">
+          ${classSelectOptions(statuses, classStatusFilter, "全部状态")}
+        </select>
+      </label>
+      <label>老师
+        <select id="classTeacherFilter" aria-label="按老师筛选班级">
+          ${classSelectOptions(teachers, classTeacherFilter, "全部老师")}
+        </select>
+      </label>
+      <label>待处理
+        <select id="classRiskFilter" aria-label="按待处理事项筛选班级">
+          <option value="all" ${classRiskFilter === "all" ? "selected" : ""}>全部情况</option>
+          <option value="full" ${classRiskFilter === "full" ? "selected" : ""}>已满班</option>
+          <option value="nearFull" ${classRiskFilter === "nearFull" ? "selected" : ""}>接近满班</option>
+          <option value="debt" ${classRiskFilter === "debt" ? "selected" : ""}>有欠费</option>
+          <option value="noSchedule" ${classRiskFilter === "noSchedule" ? "selected" : ""}>待排课</option>
+          <option value="empty" ${classRiskFilter === "empty" ? "selected" : ""}>空班</option>
+          <option value="none" ${classRiskFilter === "none" ? "selected" : ""}>无待处理</option>
+        </select>
+      </label>
+      <label>排序
+        <select id="classSortMode" aria-label="班级列表排序">
+          <option value="risk" ${classSortMode === "risk" ? "selected" : ""}>风险优先</option>
+          <option value="fillDesc" ${classSortMode === "fillDesc" ? "selected" : ""}>满班率降序</option>
+          <option value="pendingDesc" ${classSortMode === "pendingDesc" ? "selected" : ""}>待上课节降序</option>
+          <option value="teacher" ${classSortMode === "teacher" ? "selected" : ""}>老师分组</option>
+          <option value="name" ${classSortMode === "name" ? "selected" : ""}>班级名称</option>
+        </select>
+      </label>
+    </div>`;
+}
+
+function classListSummary(allClasses, visibleClasses) {
+  const active = allClasses.filter((item) => item.status === "开课中").length;
+  const nearFull = allClasses.filter((item) => classRiskReasons(item).some((reason) => reason.key === "nearFull" || reason.key === "full")).length;
+  const debtCount = allClasses.filter((item) => classDebtTotal(item) > 0).length;
+  const pendingLessons = allClasses.reduce((sum, item) => sum + classPendingLessonCount(item), 0);
+
+  return `
+    <div class="summary-grid compact-metrics class-list-summary">
+      <div class="metric"><span>当前显示</span><strong>${visibleClasses.length}</strong><small>全部 ${allClasses.length} 个班级</small></div>
+      <div class="metric"><span>开课中</span><strong>${active}</strong><small>需要持续排课和点名</small></div>
+      <div class="metric"><span>容量预警</span><strong>${nearFull}</strong><small>满班或接近满班</small></div>
+      <div class="metric"><span>待处理</span><strong>${debtCount + pendingLessons}</strong><small>${debtCount} 个班有欠费，${pendingLessons} 节待上</small></div>
+    </div>`;
 }
 
 function classStudentOrders(student, className) {
@@ -424,33 +595,60 @@ function showClassProfile(className) {
 
 renderClasses = function renderClassesWithProfile() {
   if (typeof syncClassCounts === "function") syncClassCounts();
-  const rows = appState.classes
-    .filter(matchesRow)
+  const allClasses = appState.classes.filter(matchesRow);
+  const visibleClasses = appState.classes.filter(classMatchesListFilters).sort(compareClassesForList);
+  const rows = visibleClasses
     .map(
-      (item) => `<tr>
+      (item) => {
+        const studentCount = classStudentCount(item);
+        const pendingLessons = classPendingLessonCount(item);
+        const debtTotal = classDebtTotal(item);
+        return `<tr>
         <td><strong>${escapeHtml(item.name)}</strong><br><span class="muted">${escapeHtml(item.stage)}</span></td>
         <td>${escapeHtml(item.course)}</td>
         <td>${escapeHtml(item.teacher)}</td>
         <td>${escapeHtml(item.assistant)}</td>
         <td>${escapeHtml(item.room)}</td>
-        <td>${item.students}/${item.capacity}</td>
+        <td>${studentCount}/${item.capacity} 人<br><span class="muted">满班率 ${classCapacityRate(item, studentCount)}%</span></td>
         <td>${item.deduct}</td>
         <td>${item.teacherHours}</td>
+        <td>${pendingLessons}</td>
+        <td>${debtTotal ? tag(money(debtTotal), "red") : tag("无", "green")}</td>
         <td>${tag(item.status, statusTone(item.status))}</td>
+        <td>${renderClassRiskTags(item)}</td>
         <td><button class="small-button" type="button" data-class-detail="${escapeHtml(item.name)}">详情</button></td>
-      </tr>`
+      </tr>`;
+      }
     );
 
   appContent.innerHTML = `
     <section class="section">
-      <div class="section-head"><h3>班级与容量</h3><span class="muted">支持普通课程和组合课程</span></div>
+      <div class="section-head">
+        <div>
+          <h3>班级与容量</h3>
+          <span class="muted">筛选满班、欠费、待排课等分班排课前需要核对的班级。</span>
+        </div>
+      </div>
       <div class="section-body">
         ${renderNotice("classes")}
         ${renderAssignPanel()}
-        ${table(["班级", "关联课程", "教师", "助教", "教室", "人数", "学生扣课", "教师课时", "状态", "操作"], rows)}
+        ${classListSummary(allClasses, visibleClasses)}
+        ${renderClassFilterToolbar()}
+        ${table(["班级", "关联课程", "教师", "助教", "教室", "人数", "学生扣课", "教师课时", "待上课节", "欠费合计", "状态", "待处理", "操作"], rows)}
       </div>
     </section>`;
 };
+
+document.addEventListener("change", (event) => {
+  if (event.target.id === "classStatusFilter") classStatusFilter = event.target.value;
+  if (event.target.id === "classTeacherFilter") classTeacherFilter = event.target.value;
+  if (event.target.id === "classRiskFilter") classRiskFilter = event.target.value;
+  if (event.target.id === "classSortMode") classSortMode = event.target.value;
+
+  if (["classStatusFilter", "classTeacherFilter", "classRiskFilter", "classSortMode"].includes(event.target.id) && currentView === "classes") {
+    renderView();
+  }
+});
 
 document.addEventListener("click", (event) => {
   const classButton = event.target.closest("[data-class-detail]");

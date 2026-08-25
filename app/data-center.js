@@ -12,6 +12,10 @@ renderView = function renderViewWithDataCenter() {
   baseRenderView();
 };
 
+let dataPreviewType = "students";
+let dataPreviewSearchTerm = "";
+let dataPreviewOnlyIssues = false;
+
 function csvCell(value) {
   const cleanValue = text(value).replaceAll('"', '""');
   return `"${cleanValue}"`;
@@ -35,8 +39,8 @@ function downloadText(fileName, content, type = "text/plain;charset=utf-8") {
   URL.revokeObjectURL(url);
 }
 
-function exportDataset(type) {
-  const configs = {
+function dataCenterDatasetConfigs() {
+  return {
     students: {
       file: "学员档案.csv",
       rows: appState.students,
@@ -317,12 +321,204 @@ function exportDataset(type) {
       ]
     }
   };
+}
+
+function exportDataset(type) {
+  const configs = dataCenterDatasetConfigs();
   const config = configs[type];
   if (!config) return;
   const columns = config.columns.map(([key, label]) => ({ key, label }));
   downloadText(config.file, buildCsv(config.rows, columns), "text/csv;charset=utf-8");
   setNotice("data", `${config.file} 已开始下载。`);
   renderView();
+}
+
+function normalizeDataColumns(config) {
+  return config.columns.map(([key, label]) => ({ key, label }));
+}
+
+function rowValue(row, key) {
+  return text(row?.[key]).trim();
+}
+
+function hasKnownClass(className) {
+  return !className || className === "待分班" || Boolean(getClass(className));
+}
+
+function hasKnownStudent(name) {
+  return !name || appState.students.some((student) => student.name === name);
+}
+
+function dataIssueReasons(type, row) {
+  const reasons = [];
+  if (!row) return reasons;
+
+  if (type === "students") {
+    const phone = rowValue(row, "phone");
+    if (!rowValue(row, "name")) reasons.push("缺学员姓名");
+    if (!/^1\d{10}$/.test(phone)) reasons.push("手机号格式异常");
+    if (!hasKnownClass(rowValue(row, "className"))) reasons.push("班级不存在");
+    if (Number(row.balance || 0) > 0 && Number(row.balance || 0) <= 3) reasons.push("课时不足");
+    if (Number(row.debt || 0) > 0) reasons.push("存在欠费");
+  }
+
+  if (type === "orders") {
+    const remaining = Number(row.bought || 0) + Number(row.gift || 0) - Number(row.used || 0);
+    if (!hasKnownStudent(rowValue(row, "student"))) reasons.push("学员不存在");
+    if (!hasKnownClass(rowValue(row, "className"))) reasons.push("班级不存在");
+    if (remaining < 0) reasons.push("已上超过购买课时");
+    if (remaining >= 0 && remaining <= 3) reasons.push("订单余额偏低");
+    if (Number(row.debt || 0) > 0) reasons.push("订单欠费");
+  }
+
+  if (type === "classes") {
+    if (!rowValue(row, "course")) reasons.push("缺关联课程");
+    if (!rowValue(row, "teacher")) reasons.push("缺默认教师");
+    if (!rowValue(row, "room")) reasons.push("缺上课教室");
+    if (Number(row.students || 0) > Number(row.capacity || 0)) reasons.push("人数超过容量");
+  }
+
+  if (["courses", "teachers", "rooms", "employees"].includes(type)) {
+    if (!rowValue(row, "name")) reasons.push("缺名称");
+    if (type === "courses" && Number(row.hours || 0) <= 0) reasons.push("标准课时异常");
+    if (type === "rooms" && Number(row.capacity || 0) <= 0) reasons.push("容量异常");
+    if (type === "teachers" && Number(row.weeklyHours || 0) <= 0) reasons.push("每周容量异常");
+  }
+
+  if (type === "lessons") {
+    const sameTimeLessons = appState.lessons.filter((lesson) => lesson.id !== row.id && lesson.date === row.date && timeRangesOverlap(lesson.time, row.time));
+    if (!rowValue(row, "date") || !rowValue(row, "time")) reasons.push("缺上课时间");
+    if (!rowValue(row, "teacher")) reasons.push("缺教师");
+    if (!rowValue(row, "room")) reasons.push("缺教室");
+    if (row.status === "待上课" && row.date < todayIsoDate()) reasons.push("历史课节未处理");
+    if (sameTimeLessons.some((lesson) => lesson.teacher === row.teacher || lesson.room === row.room || lesson.target === row.target)) reasons.push("存在时间冲突");
+  }
+
+  if (type === "payments") {
+    if (!hasKnownStudent(rowValue(row, "student"))) reasons.push("学员不存在");
+    if (Number(row.amount || 0) <= 0) reasons.push("收款金额异常");
+  }
+
+  if (type === "attendance" && !rowValue(row, "status")) reasons.push("缺考勤状态");
+  if (type === "followUps" && ["待跟进", "逾期"].includes(rowValue(row, "status"))) reasons.push(rowValue(row, "status"));
+  if (type === "scheduleConflicts" && rowValue(row, "status") !== "已处理") reasons.push("待处理冲突");
+
+  return reasons;
+}
+
+function renderDataPreviewCell(value) {
+  const cleanValue = text(value);
+  const className = cleanValue.length > 70 || cleanValue.includes("\n") ? "data-preview-cell long" : "data-preview-cell";
+  return `<div class="${className}">${escapeHtml(cleanValue || "-")}</div>`;
+}
+
+function dataPreviewRows(type, config, columns) {
+  const keyword = dataPreviewSearchTerm.trim().toLowerCase();
+  return config.rows
+    .map((row) => ({ row, reasons: dataIssueReasons(type, row) }))
+    .filter((item) => {
+      if (dataPreviewOnlyIssues && !item.reasons.length) return false;
+      if (!keyword) return true;
+      const haystack = [
+        ...columns.map((column) => rowValue(item.row, column.key)),
+        ...item.reasons
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(keyword);
+    });
+}
+
+function renderDataPreviewPanel(configs) {
+  if (!configs[dataPreviewType]) dataPreviewType = Object.keys(configs)[0] || "students";
+  const config = configs[dataPreviewType];
+  const columns = normalizeDataColumns(config);
+  const rows = dataPreviewRows(dataPreviewType, config, columns);
+  const issueCount = config.rows.filter((row) => dataIssueReasons(dataPreviewType, row).length).length;
+  const headers = ["数据提示", ...columns.map((column) => column.label)];
+  const tableRows = rows.map((item) => `<tr>
+    <td>${item.reasons.length ? tag(item.reasons.join("、"), "amber") : tag("正常", "green")}</td>
+    ${columns.map((column) => `<td>${renderDataPreviewCell(item.row[column.key])}</td>`).join("")}
+  </tr>`);
+
+  return `
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h3>全量数据表</h3>
+          <span class="muted">不用导出 Excel，也能在系统内核对每张业务表。</span>
+        </div>
+        <span>${tag(`${rows.length}/${config.rows.length} 行`, issueCount ? "amber" : "green")}</span>
+      </div>
+      <div class="section-body">
+        <div class="filters data-preview-toolbar">
+          <select id="dataPreviewType" aria-label="选择数据表">
+            ${Object.entries(configs)
+              .map(([type, item]) => `<option value="${type}" ${type === dataPreviewType ? "selected" : ""}>${escapeHtml(item.file.replace(/\.csv$/, ""))}</option>`)
+              .join("")}
+          </select>
+          <input id="dataPreviewSearch" value="${escapeHtml(dataPreviewSearchTerm)}" placeholder="在当前数据表内搜索" />
+          <label class="check-row">
+            <input id="dataPreviewIssues" type="checkbox" ${dataPreviewOnlyIssues ? "checked" : ""} />
+            只看需要处理
+          </label>
+          <button class="small-button" type="button" data-export="${dataPreviewType}">导出当前表</button>
+        </div>
+        <div class="data-preview-table">${table(headers, tableRows)}</div>
+      </div>
+    </section>`;
+}
+
+function duplicatePhoneIssues() {
+  const phones = new Map();
+  for (const student of appState.students) {
+    const phone = rowValue(student, "phone");
+    if (!phone) continue;
+    if (!phones.has(phone)) phones.set(phone, []);
+    phones.get(phone).push(student.name);
+  }
+  return [...phones.entries()].filter(([, names]) => names.length > 1);
+}
+
+function renderDataQualityPanel(configs) {
+  const tableIssues = Object.entries(configs)
+    .map(([type, config]) => ({
+      type,
+      title: config.file.replace(/\.csv$/, ""),
+      count: config.rows.filter((row) => dataIssueReasons(type, row).length).length,
+      total: config.rows.length
+    }))
+    .filter((item) => item.count > 0);
+  const duplicatePhones = duplicatePhoneIssues();
+  const allIssueCount = tableIssues.reduce((sum, item) => sum + item.count, 0) + duplicatePhones.length;
+  const issueCards = [
+    ...tableIssues.slice(0, 8).map((item) => `<div class="quality-card">
+      <strong>${escapeHtml(item.title)}</strong>
+      <span>${tag(`${item.count} 行需处理`, "amber")}</span>
+      <button class="small-button" type="button" data-preview-table="${item.type}">查看</button>
+    </div>`),
+    ...duplicatePhones.slice(0, 3).map(([phone, names]) => `<div class="quality-card">
+      <strong>手机号重复</strong>
+      <span class="muted">${escapeHtml(phone)}：${escapeHtml(names.join("、"))}</span>
+      <button class="small-button" type="button" data-preview-table="students">查看学员</button>
+    </div>`)
+  ];
+
+  return `
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h3>数据体检</h3>
+          <span class="muted">自动标记欠费、课时不足、冲突、缺字段等常见运营风险。</span>
+        </div>
+        <span>${tag(allIssueCount ? `${allIssueCount} 项提醒` : "数据正常", allIssueCount ? "amber" : "green")}</span>
+      </div>
+      <div class="section-body">
+        <div class="quality-grid">
+          ${issueCards.join("") || `<div class="stack-item"><strong>暂无明显问题</strong><span class="muted">当前数据没有发现常见异常。</span></div>`}
+        </div>
+      </div>
+    </section>`;
 }
 
 function exportBackup() {
@@ -362,27 +558,10 @@ function renderDataCenter() {
   if (typeof ensurePaymentData === "function") ensurePaymentData();
   if (typeof ensureStaffData === "function") ensureStaffData();
   if (typeof ensureFollowUpData === "function") ensureFollowUpData();
+  const configs = dataCenterDatasetConfigs();
   const pendingLessons = appState.lessons.filter((lesson) => lesson.status === "待上课").length;
   const debtTotal = appState.orders.reduce((sum, order) => sum + Number(order.debt || 0), 0);
-  const dataCards = [
-    ["学员档案", appState.students.length, "students", "导出学员"],
-    ["订单课时", appState.orders.length, "orders", "导出订单"],
-    ["班级列表", appState.classes.length, "classes", "导出班级"],
-    ["课程资料", appState.courses?.length || 0, "courses", "导出课程"],
-    ["教师资料", appState.teachers?.length || 0, "teachers", "导出教师"],
-    ["教室资料", appState.rooms?.length || 0, "rooms", "导出教室"],
-    ["员工资料", appState.employees?.length || 0, "employees", "导出员工"],
-    ["角色权限", appState.roles?.length || 0, "roles", "导出角色"],
-    ["点名考勤", appState.attendance?.length || 0, "attendance", "导出考勤"],
-    ["收款流水", appState.payments?.length || 0, "payments", "导出收款"],
-    ["课表课节", appState.lessons.length, "lessons", "导出课表"],
-    ["排课冲突", typeof flattenScheduleConflictRows === "function" ? flattenScheduleConflictRows().length : 0, "scheduleConflicts", "导出冲突"],
-    ["周期排课", typeof flattenScheduleBatchRows === "function" ? flattenScheduleBatchRows().length : 0, "scheduleBatches", "导出批次"],
-    ["续费跟进", typeof flattenFollowUpRows === "function" ? flattenFollowUpRows().length : 0, "followUps", "导出跟进"],
-    ["学员详情汇总", typeof flattenStudentDetailRows === "function" ? flattenStudentDetailRows().length : 0, "studentDetails", "导出详情"],
-    ["经营报表", typeof flattenOperationReportRows === "function" ? flattenOperationReportRows().length : 0, "reports", "导出报表"],
-    ["消课流水", appState.ledger.length, "ledger", "导出流水"]
-  ];
+  const dataCards = Object.entries(configs).map(([type, config]) => [config.file.replace(/\.csv$/, ""), config.rows.length, type, `导出${config.file.replace(/\.csv$/, "")}`]);
 
   appContent.innerHTML = `
     <section class="section">
@@ -400,7 +579,7 @@ function renderDataCenter() {
         ${renderNotice("data")}
         ${typeof renderImportPanel === "function" ? renderImportPanel() : ""}
         <div class="summary-grid compact-metrics">
-          <div class="metric"><span>数据表数量</span><strong>17</strong></div>
+          <div class="metric"><span>数据表数量</span><strong>${Object.keys(configs).length}</strong></div>
           <div class="metric"><span>待上课节</span><strong>${pendingLessons}</strong></div>
           <div class="metric"><span>待收欠费</span><strong>${money(debtTotal)}</strong></div>
           <div class="metric"><span>存储方式</span><strong>本地</strong></div>
@@ -429,7 +608,9 @@ function renderDataCenter() {
           </div>
         </div>
       </div>
-    </section>`;
+    </section>
+    ${renderDataQualityPanel(configs)}
+    ${renderDataPreviewPanel(configs)}`;
 }
 
 document.addEventListener("click", (event) => {
@@ -439,6 +620,36 @@ document.addEventListener("click", (event) => {
   if (event.target.id === "backupData") exportBackup();
 
   if (event.target.id === "restoreData") restoreFile.click();
+
+  const previewButton = event.target.closest("[data-preview-table]");
+  if (previewButton) {
+    dataPreviewType = previewButton.dataset.previewTable;
+    dataPreviewOnlyIssues = true;
+    renderView();
+  }
+});
+
+document.addEventListener("input", (event) => {
+  if (event.target.id === "dataPreviewSearch") {
+    const cursor = event.target.selectionStart || 0;
+    dataPreviewSearchTerm = event.target.value;
+    renderView();
+    const input = document.querySelector("#dataPreviewSearch");
+    input?.focus();
+    input?.setSelectionRange(cursor, cursor);
+  }
+});
+
+document.addEventListener("change", (event) => {
+  if (event.target.id === "dataPreviewType") {
+    dataPreviewType = event.target.value;
+    renderView();
+  }
+
+  if (event.target.id === "dataPreviewIssues") {
+    dataPreviewOnlyIssues = event.target.checked;
+    renderView();
+  }
 });
 
 restoreFile.addEventListener("change", (event) => {

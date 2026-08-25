@@ -659,6 +659,87 @@ tr:hover td {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.data-preview-toolbar {
+  align-items: center;
+}
+
+.data-preview-toolbar input {
+  min-width: min(320px, 100%);
+}
+
+.check-row {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.check-row input {
+  min-width: auto;
+}
+
+.data-preview-table .table-wrap {
+  max-height: 620px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.data-preview-table table {
+  min-width: max-content;
+}
+
+.data-preview-table th:first-child,
+.data-preview-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #fff;
+  max-width: 240px;
+}
+
+.data-preview-table th:first-child {
+  background: #f8fafc;
+  z-index: 3;
+}
+
+.data-preview-cell {
+  min-width: 82px;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.data-preview-cell.long {
+  min-width: 220px;
+  max-width: 460px;
+  max-height: 110px;
+  white-space: pre-wrap;
+  overflow: auto;
+  line-height: 1.45;
+}
+
+.quality-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.quality-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.quality-card .small-button {
+  justify-self: start;
+}
+
 .master-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(220px, 1fr));

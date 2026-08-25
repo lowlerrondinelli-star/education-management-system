@@ -26,6 +26,9 @@ let searchTerm = "";
 let excelPreview = null;
 let selectedWorkbookIndex = 0;
 let selectedSheetIndex = 0;
+let selectedStudentForOrder = "";
+let selectedStudentForClass = "";
+let operationNotice = null;
 
 const appContent = document.querySelector("#appContent");
 const viewTitle = document.querySelector("#viewTitle");
@@ -37,12 +40,25 @@ const studentForm = document.querySelector("#studentForm");
 
 function loadState() {
   const saved = localStorage.getItem(storageKey);
-  if (!saved) return structuredClone(window.seedData);
+  if (!saved) return normalizeState(structuredClone(window.seedData));
   try {
-    return { ...structuredClone(window.seedData), ...JSON.parse(saved) };
+    return normalizeState({ ...structuredClone(window.seedData), ...JSON.parse(saved) });
   } catch {
-    return structuredClone(window.seedData);
+    return normalizeState(structuredClone(window.seedData));
   }
+}
+
+function normalizeState(state) {
+  const next = { ...structuredClone(window.seedData), ...state };
+  for (const key of ["students", "orders", "classes", "lessons", "ledger", "templates"]) {
+    if (!Array.isArray(next[key])) next[key] = [];
+  }
+
+  const classNames = new Set(next.classes.map((item) => item.name));
+  for (const seedClass of window.seedData.classes || []) {
+    if (!classNames.has(seedClass.name)) next.classes.push(structuredClone(seedClass));
+  }
+  return next;
 }
 
 function saveState() {
@@ -83,7 +99,82 @@ function matchesRow(row) {
   return haystack.includes(searchTerm.toLowerCase());
 }
 
+function setNotice(view, textValue, tone = "green") {
+  operationNotice = { view, text: textValue, tone };
+}
+
+function renderNotice(view) {
+  if (!operationNotice || operationNotice.view !== view) return "";
+  return `<div class="notice ${operationNotice.tone}">${escapeHtml(operationNotice.text)}</div>`;
+}
+
+function numberFromForm(formData, name, fallback = 0) {
+  const value = Number(formData.get(name));
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function nextId(prefix) {
+  return `${prefix}${new Date().toISOString().replace(/\D/g, "").slice(0, 14)}${String(Math.floor(Math.random() * 100)).padStart(2, "0")}`;
+}
+
+function classOptions(selectedName = "") {
+  return appState.classes
+    .map((item) => `<option value="${escapeHtml(item.name)}" ${item.name === selectedName ? "selected" : ""}>${escapeHtml(item.name)}</option>`)
+    .join("");
+}
+
+function studentOptions(selectedId = "") {
+  return appState.students
+    .map((item) => `<option value="${escapeHtml(item.id)}" ${item.id === selectedId ? "selected" : ""}>${escapeHtml(item.name)}（${escapeHtml(item.grade)}）</option>`)
+    .join("");
+}
+
+function getClass(name) {
+  return appState.classes.find((item) => item.name === name);
+}
+
+function syncClassCounts() {
+  for (const classItem of appState.classes) {
+    classItem.students = appState.students.filter((student) => student.className === classItem.name).length;
+  }
+}
+
+function dayFromDate(dateValue) {
+  const dayNames = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+  const date = new Date(`${dateValue}T00:00:00`);
+  return dayNames[date.getDay()] || "";
+}
+
+function parseTimeRange(range) {
+  const [start, end] = text(range).split("-").map((part) => part.trim());
+  const toMinutes = (value) => {
+    const [hour, minute] = value.split(":").map(Number);
+    return hour * 60 + minute;
+  };
+  return { start: toMinutes(start), end: toMinutes(end) };
+}
+
+function timeRangesOverlap(left, right) {
+  const a = parseTimeRange(left);
+  const b = parseTimeRange(right);
+  if (![a.start, a.end, b.start, b.end].every(Number.isFinite)) return left === right;
+  return a.start < b.end && b.start < a.end;
+}
+
+function findLessonConflicts(candidate) {
+  return appState.lessons.filter((lesson) => {
+    if (lesson.date !== candidate.date || !timeRangesOverlap(lesson.time, candidate.time)) return false;
+    return lesson.teacher === candidate.teacher || lesson.room === candidate.room || lesson.target === candidate.target;
+  });
+}
+
+function lessonDeduct(lesson) {
+  const classItem = getClass(lesson.target);
+  return Number(classItem?.deduct || lesson.deduct || 1);
+}
+
 function renderNav() {
+  syncClassCounts();
   const counts = {
     dashboard: "",
     students: appState.students.length,
@@ -186,6 +277,12 @@ function renderStudents() {
         <td>${tag(student.status, statusTone(student.status))}</td>
         <td>${student.balance}</td>
         <td>${student.debt ? tag(money(student.debt), "red") : tag("无欠费", "green")}</td>
+        <td>
+          <div class="action-row">
+            <button class="small-button" type="button" data-student-order="${student.id}">报名</button>
+            <button class="small-button" type="button" data-student-class="${student.id}">分班</button>
+          </div>
+        </td>
       </tr>`
     );
 
@@ -199,9 +296,36 @@ function renderStudents() {
         </div>
       </div>
       <div class="section-body">
-        ${table(["学员", "手机号", "年级", "学校", "渠道", "意向/报读课程", "班级", "状态", "剩余课时", "欠费"], rows)}
+        ${renderNotice("students")}
+        ${table(["学员", "手机号", "年级", "学校", "渠道", "意向/报读课程", "班级", "状态", "剩余课时", "欠费", "操作"], rows)}
       </div>
     </section>`;
+}
+
+function renderOrderQuickForm() {
+  const selectedStudent = appState.students.find((item) => item.id === selectedStudentForOrder);
+  const defaultClass = getClass(selectedStudent?.className) || appState.classes[0] || {};
+  return `
+    <form class="operation-panel" id="orderForm">
+      <div>
+        <strong>快速报名</strong>
+        <span class="muted">生成订单后同步更新学员状态、班级和课时余额。</span>
+      </div>
+      <div class="operation-grid">
+        <label>学员<select name="studentId" required>${studentOptions(selectedStudentForOrder)}</select></label>
+        <label>报读班级<select name="className" required>${classOptions(defaultClass.name)}</select></label>
+        <label>报读课程<input name="course" value="${escapeHtml(defaultClass.course || "常规课程")}" required /></label>
+        <label>购买课时<input name="bought" type="number" min="0" step="0.5" value="20" required /></label>
+        <label>赠送课时<input name="gift" type="number" min="0" step="0.5" value="0" /></label>
+        <label>实收金额<input name="paid" type="number" min="0" step="1" value="2800" required /></label>
+        <label>欠费金额<input name="debt" type="number" min="0" step="1" value="0" /></label>
+        <label>有效期至<input name="expireAt" type="date" value="2027-02-28" required /></label>
+      </div>
+      <div class="dialog-actions">
+        <span class="muted">默认收款方式：线下收款，可后续扩展。</span>
+        <button class="primary-action" type="submit">确认报名</button>
+      </div>
+    </form>`;
 }
 
 function renderOrders() {
@@ -226,8 +350,32 @@ function renderOrders() {
   appContent.innerHTML = `
     <section class="section">
       <div class="section-head"><h3>报名订单与课时账户</h3><span class="muted">余额 = 购买 + 赠送 - 已上</span></div>
-      <div class="section-body">${table(["订单号", "学员", "课程", "班级", "购买+赠送", "已上", "余额", "实收", "欠费", "有效期"], rows)}</div>
+      <div class="section-body">
+        ${renderNotice("orders")}
+        ${renderOrderQuickForm()}
+        ${table(["订单号", "学员", "课程", "班级", "购买+赠送", "已上", "余额", "实收", "欠费", "有效期"], rows)}
+      </div>
     </section>`;
+}
+
+function renderAssignPanel() {
+  const selectedStudent = appState.students.find((item) => item.id === selectedStudentForClass);
+  const defaultClassName = selectedStudent?.className || "";
+  return `
+    <form class="operation-panel" id="assignForm">
+      <div>
+        <strong>快速分班</strong>
+        <span class="muted">适合前台把已报名或意向学员放入正式班级。</span>
+      </div>
+      <div class="operation-grid compact">
+        <label>学员<select name="studentId" required>${studentOptions(selectedStudentForClass)}</select></label>
+        <label>目标班级<select name="className" required>${classOptions(defaultClassName)}</select></label>
+      </div>
+      <div class="dialog-actions">
+        <span class="muted">班级人数会按学员档案自动重算。</span>
+        <button class="primary-action" type="submit">确认分班</button>
+      </div>
+    </form>`;
 }
 
 function renderClasses() {
@@ -250,8 +398,37 @@ function renderClasses() {
   appContent.innerHTML = `
     <section class="section">
       <div class="section-head"><h3>班级与容量</h3><span class="muted">支持普通课程和组合课程</span></div>
-      <div class="section-body">${table(["班级", "关联课程", "教师", "助教", "教室", "人数", "学生扣课", "教师课时", "状态"], rows)}</div>
+      <div class="section-body">
+        ${renderNotice("classes")}
+        ${renderAssignPanel()}
+        ${table(["班级", "关联课程", "教师", "助教", "教室", "人数", "学生扣课", "教师课时", "状态"], rows)}
+      </div>
     </section>`;
+}
+
+function renderLessonForm() {
+  const defaultClass = appState.classes[0] || {};
+  return `
+    <form class="operation-panel" id="lessonForm">
+      <div>
+        <strong>新增课节</strong>
+        <span class="muted">保存前会检查同一时间的老师、教室和班级冲突。</span>
+      </div>
+      <div class="operation-grid">
+        <label>上课日期<input name="date" type="date" value="2026-09-07" required /></label>
+        <label>开始时间<input name="startTime" type="time" value="18:30" required /></label>
+        <label>结束时间<input name="endTime" type="time" value="20:00" required /></label>
+        <label>班级/对象<select name="target" required>${classOptions(defaultClass.name)}</select></label>
+        <label>科目<input name="subject" value="数学" required /></label>
+        <label>上课教师<input name="teacher" value="${escapeHtml(defaultClass.teacher || "任课老师")}" required /></label>
+        <label>上课教室<input name="room" value="${escapeHtml(defaultClass.room || "默认教室")}" required /></label>
+        <label>课节类型<select name="type"><option>班级课</option><option>1对1</option></select></label>
+      </div>
+      <div class="dialog-actions">
+        <span class="muted">确认上课后会自动扣除对应学员课时。</span>
+        <button class="primary-action" type="submit">保存课节</button>
+      </div>
+    </form>`;
 }
 
 function renderSchedule() {
@@ -263,6 +440,8 @@ function renderSchedule() {
         <span class="muted">班级课与 1 对 1 共用冲突视图</span>
       </div>
       <div class="section-body">
+        ${renderNotice("schedule")}
+        ${renderLessonForm()}
         <div class="board">
           ${days
             .map((day) => {
@@ -525,26 +704,124 @@ function addStudent(formData) {
   setView("students");
 }
 
+function enrollStudent(formData) {
+  const student = appState.students.find((item) => item.id === formData.get("studentId"));
+  const classItem = getClass(formData.get("className"));
+  if (!student || !classItem) return;
+
+  const bought = numberFromForm(formData, "bought");
+  const gift = numberFromForm(formData, "gift");
+  const paid = numberFromForm(formData, "paid");
+  const debt = numberFromForm(formData, "debt");
+  const course = text(formData.get("course")).trim() || classItem.course;
+  const className = classItem.name;
+
+  appState.orders.unshift({
+    id: nextId("O"),
+    student: student.name,
+    course,
+    className,
+    bought,
+    gift,
+    used: 0,
+    paid,
+    debt,
+    payMethod: "线下收款",
+    expireAt: text(formData.get("expireAt")),
+    owner: student.owner || "前台老师"
+  });
+
+  student.course = course;
+  student.className = className;
+  student.status = "已报名";
+  student.balance = Number(student.balance || 0) + bought + gift;
+  student.debt = debt;
+  syncClassCounts();
+  selectedStudentForOrder = student.id;
+  setNotice("orders", `${student.name} 已报名 ${className}，新增 ${bought + gift} 课时。`);
+  saveState();
+  setView("orders");
+}
+
+function assignStudentToClass(formData) {
+  const student = appState.students.find((item) => item.id === formData.get("studentId"));
+  const classItem = getClass(formData.get("className"));
+  if (!student || !classItem) return;
+
+  student.className = classItem.name;
+  student.course = classItem.course;
+  if (student.status === "意向") student.status = "已报名";
+  selectedStudentForClass = student.id;
+  syncClassCounts();
+  setNotice("classes", `${student.name} 已分入 ${classItem.name}。`);
+  saveState();
+  setView("classes");
+}
+
+function createLesson(formData) {
+  const date = text(formData.get("date"));
+  const startTime = text(formData.get("startTime"));
+  const endTime = text(formData.get("endTime"));
+  const target = text(formData.get("target"));
+  const classItem = getClass(target);
+  const lesson = {
+    id: nextId("L"),
+    day: dayFromDate(date),
+    date,
+    time: `${startTime}-${endTime}`,
+    type: text(formData.get("type")) || "班级课",
+    target,
+    subject: text(formData.get("subject")).trim() || "课程",
+    teacher: text(formData.get("teacher")).trim() || classItem?.teacher || "任课老师",
+    room: text(formData.get("room")).trim() || classItem?.room || "默认教室",
+    status: "待上课",
+    deduct: Number(classItem?.deduct || 1)
+  };
+  const conflicts = findLessonConflicts(lesson);
+  if (conflicts.length) {
+    const names = conflicts.map((item) => `${item.target} ${item.time}`).join("；");
+    setNotice("schedule", `存在排课冲突：${names}`, "red");
+    renderView();
+    return;
+  }
+
+  appState.lessons.unshift(lesson);
+  setNotice("schedule", `${lesson.day} ${lesson.time} 已新增 ${lesson.target}。`);
+  saveState();
+  setView("schedule");
+}
+
+function applyLessonDeduction(student, lesson, deduct) {
+  const before = Number(student.balance || 0);
+  const after = Math.max(0, before - deduct);
+  student.balance = after;
+
+  const relatedOrder = appState.orders.find((order) => order.student === student.name && order.className === lesson.target);
+  if (relatedOrder) relatedOrder.used = Number(relatedOrder.used || 0) + Math.min(before, deduct);
+
+  appState.ledger.unshift({
+    id: nextId("C"),
+    student: student.name,
+    lesson: `${lesson.target} ${lesson.date}`,
+    type: before >= deduct ? "消课" : "课时不足",
+    change: -Math.min(before, deduct),
+    before,
+    after,
+    operator: lesson.teacher,
+    time: new Date().toLocaleString("zh-CN", { hour12: false })
+  });
+}
+
 function finishLesson(lessonId) {
   const lesson = appState.lessons.find((item) => item.id === lessonId);
   if (!lesson || lesson.status === "已上课") return;
   lesson.status = "已上课";
-  const relatedStudent = appState.students.find((student) => student.className === lesson.target && student.balance > 0);
-  if (relatedStudent) {
-    const before = Number(relatedStudent.balance);
-    relatedStudent.balance = Math.max(0, before - 1);
-    appState.ledger.unshift({
-      id: `C${Date.now()}`,
-      student: relatedStudent.name,
-      lesson: `${lesson.target} ${lesson.date}`,
-      type: "消课",
-      change: -1,
-      before,
-      after: relatedStudent.balance,
-      operator: lesson.teacher,
-      time: new Date().toLocaleString("zh-CN", { hour12: false })
-    });
-  }
+  const deduct = lessonDeduct(lesson);
+  const classStudents = appState.students.filter((student) => student.className === lesson.target);
+  const oneToOneName = lesson.target.split("-")[0];
+  const studentsToDeduct = classStudents.length ? classStudents : appState.students.filter((student) => student.name === oneToOneName);
+  studentsToDeduct.forEach((student) => applyLessonDeduction(student, lesson, deduct));
+  setNotice("schedule", `${lesson.target} 已确认上课，生成 ${studentsToDeduct.length} 条课时流水。`);
   saveState();
   renderView();
   renderNav();
@@ -560,6 +837,18 @@ document.addEventListener("click", (event) => {
   const finishButton = event.target.closest("[data-finish-lesson]");
   if (finishButton) finishLesson(finishButton.dataset.finishLesson);
 
+  const orderShortcut = event.target.closest("[data-student-order]");
+  if (orderShortcut) {
+    selectedStudentForOrder = orderShortcut.dataset.studentOrder;
+    setView("orders");
+  }
+
+  const classShortcut = event.target.closest("[data-student-class]");
+  if (classShortcut) {
+    selectedStudentForClass = classShortcut.dataset.studentClass;
+    setView("classes");
+  }
+
   if (event.target.id === "newStudentInline" || event.target.id === "newStudentBtn") {
     studentDialog.showModal();
   }
@@ -567,6 +856,7 @@ document.addEventListener("click", (event) => {
   if (event.target.id === "resetDemo") {
     localStorage.removeItem(storageKey);
     appState = structuredClone(window.seedData);
+    operationNotice = null;
     renderNav();
     renderView();
   }
@@ -597,6 +887,23 @@ studentForm.addEventListener("submit", (event) => {
   addStudent(new FormData(studentForm));
   studentForm.reset();
   studentDialog.close();
+});
+
+document.addEventListener("submit", (event) => {
+  if (event.target.id === "orderForm") {
+    event.preventDefault();
+    enrollStudent(new FormData(event.target));
+  }
+
+  if (event.target.id === "assignForm") {
+    event.preventDefault();
+    assignStudentToClass(new FormData(event.target));
+  }
+
+  if (event.target.id === "lessonForm") {
+    event.preventDefault();
+    createLesson(new FormData(event.target));
+  }
 });
 
 renderNav();

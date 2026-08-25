@@ -3,8 +3,8 @@ const authSessionKey = `${storageKey}-current-user`;
 const authRoleDefaults = {
   "校长/管理员": () => navItems.map((item) => item.id),
   "前台/招生顾问": () => ["dashboard", "leads", "students", "orders", "classes", "followUp", "data", "templates"],
-  "教务/学管师": () => ["dashboard", "leads", "students", "classes", "schedule", "leaves", "consume", "feedback", "masters", "data"],
-  "教师": () => ["dashboard", "schedule", "leaves", "consume", "feedback"],
+  "教务/学管师": () => ["dashboard", "teacherDesk", "leads", "students", "classes", "schedule", "leaves", "consume", "feedback", "masters", "data"],
+  "教师": () => ["dashboard", "teacherDesk", "schedule", "leaves", "consume", "feedback"],
   "财务/收银": () => ["dashboard", "orders", "consume", "reports", "data"]
 };
 

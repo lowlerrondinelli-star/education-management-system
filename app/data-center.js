@@ -223,6 +223,25 @@ function exportDataset(type) {
         ["status", "处理状态"]
       ]
     },
+    scheduleBatches: {
+      file: "周期排课.csv",
+      rows: typeof flattenScheduleBatchRows === "function" ? flattenScheduleBatchRows() : [],
+      columns: [
+        ["id", "批次编号"],
+        ["createdAt", "生成时间"],
+        ["target", "班级/对象"],
+        ["subject", "科目"],
+        ["teacher", "上课教师"],
+        ["room", "上课教室"],
+        ["dateRange", "日期范围"],
+        ["weekdays", "重复星期"],
+        ["time", "上课时间"],
+        ["createdCount", "新增课节数"],
+        ["skippedCount", "跳过冲突数"],
+        ["skippedDetail", "冲突明细"],
+        ["operator", "操作人"]
+      ]
+    },
     followUps: {
       file: "续费跟进.csv",
       rows: typeof flattenFollowUpRows === "function" ? flattenFollowUpRows() : [],
@@ -358,6 +377,7 @@ function renderDataCenter() {
     ["收款流水", appState.payments?.length || 0, "payments", "导出收款"],
     ["课表课节", appState.lessons.length, "lessons", "导出课表"],
     ["排课冲突", typeof flattenScheduleConflictRows === "function" ? flattenScheduleConflictRows().length : 0, "scheduleConflicts", "导出冲突"],
+    ["周期排课", typeof flattenScheduleBatchRows === "function" ? flattenScheduleBatchRows().length : 0, "scheduleBatches", "导出批次"],
     ["续费跟进", typeof flattenFollowUpRows === "function" ? flattenFollowUpRows().length : 0, "followUps", "导出跟进"],
     ["学员详情汇总", typeof flattenStudentDetailRows === "function" ? flattenStudentDetailRows().length : 0, "studentDetails", "导出详情"],
     ["经营报表", typeof flattenOperationReportRows === "function" ? flattenOperationReportRows().length : 0, "reports", "导出报表"],
@@ -380,7 +400,7 @@ function renderDataCenter() {
         ${renderNotice("data")}
         ${typeof renderImportPanel === "function" ? renderImportPanel() : ""}
         <div class="summary-grid compact-metrics">
-          <div class="metric"><span>数据表数量</span><strong>16</strong></div>
+          <div class="metric"><span>数据表数量</span><strong>17</strong></div>
           <div class="metric"><span>待上课节</span><strong>${pendingLessons}</strong></div>
           <div class="metric"><span>待收欠费</span><strong>${money(debtTotal)}</strong></div>
           <div class="metric"><span>存储方式</span><strong>本地</strong></div>

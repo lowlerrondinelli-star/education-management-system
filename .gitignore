@@ -12,6 +12,7 @@ build/
 coverage/
 output/
 .playwright-cli/
+app/excel-data.json
 
 # 日志
 *.log

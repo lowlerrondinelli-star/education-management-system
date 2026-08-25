@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>教务管理系统本地原型</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="主导航">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">教</div>
+          <div>
+            <h1>教务管理</h1>
+            <p>本地运行原型</p>
+          </div>
+        </div>
+        <nav class="nav-list" id="navList"></nav>
+        <div class="sidebar-note">
+          <strong>今日重点</strong>
+          <span>先处理待上课、欠费、课时不足三类提醒。</span>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="viewEyebrow">运营总览</p>
+            <h2 id="viewTitle">今日校区</h2>
+          </div>
+          <div class="topbar-actions">
+            <label class="search-box">
+              <span aria-hidden="true">⌕</span>
+              <input id="globalSearch" type="search" placeholder="搜索学员、班级、课程、老师" />
+            </label>
+            <button class="primary-action" id="newStudentBtn" type="button">新增学员</button>
+          </div>
+        </header>
+
+        <section id="appContent" class="content" aria-live="polite"></section>
+      </main>
+    </div>
+
+    <dialog id="studentDialog" class="dialog">
+      <form method="dialog" id="studentForm">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">快速建档</p>
+            <h3>新增学员</h3>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
+        </div>
+        <div class="form-grid">
+          <label>学员姓名<input name="name" required /></label>
+          <label>手机号<input name="phone" required maxlength="11" /></label>
+          <label>年级<input name="grade" required value="初二年级" /></label>
+          <label>渠道<input name="channel" value="转介绍" /></label>
+          <label>销售员<input name="owner" value="前台老师" /></label>
+          <label>意向课程<input name="course" value="初二小组课/一对一" /></label>
+        </div>
+        <div class="dialog-actions">
+          <button value="cancel" type="submit">取消</button>
+          <button class="primary-action" value="default" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

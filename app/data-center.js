@@ -130,6 +130,33 @@ function exportDataset(type) {
         ["note", "备注"]
       ]
     },
+    employees: {
+      file: "员工资料.csv",
+      rows: flattenEmployeeRows(),
+      columns: [
+        ["name", "员工姓名"],
+        ["phone", "员工手机号"],
+        ["employeeType", "员工类型"],
+        ["department", "所属部门"],
+        ["roles", "校区角色"],
+        ["subjects", "科目"],
+        ["grades", "年级"],
+        ["isTeacher", "是否教师"],
+        ["weeklyHours", "每周容量"],
+        ["status", "状态"]
+      ]
+    },
+    roles: {
+      file: "角色权限.csv",
+      rows: flattenRoleRows(),
+      columns: [
+        ["role", "角色名称"],
+        ["description", "角色说明"],
+        ["module", "可用模块"],
+        ["moduleId", "模块编号"],
+        ["actions", "允许动作"]
+      ]
+    },
     attendance: {
       file: "点名考勤.csv",
       rows: flattenAttendanceRows(),
@@ -239,6 +266,7 @@ function restoreBackupFile(file) {
 
 function renderDataCenter() {
   if (typeof ensurePaymentData === "function") ensurePaymentData();
+  if (typeof ensureStaffData === "function") ensureStaffData();
   const pendingLessons = appState.lessons.filter((lesson) => lesson.status === "待上课").length;
   const debtTotal = appState.orders.reduce((sum, order) => sum + Number(order.debt || 0), 0);
   const dataCards = [
@@ -248,6 +276,8 @@ function renderDataCenter() {
     ["课程资料", appState.courses?.length || 0, "courses", "导出课程"],
     ["教师资料", appState.teachers?.length || 0, "teachers", "导出教师"],
     ["教室资料", appState.rooms?.length || 0, "rooms", "导出教室"],
+    ["员工资料", appState.employees?.length || 0, "employees", "导出员工"],
+    ["角色权限", appState.roles?.length || 0, "roles", "导出角色"],
     ["点名考勤", appState.attendance?.length || 0, "attendance", "导出考勤"],
     ["收款流水", appState.payments?.length || 0, "payments", "导出收款"],
     ["课表课节", appState.lessons.length, "lessons", "导出课表"],
@@ -270,7 +300,7 @@ function renderDataCenter() {
         ${renderNotice("data")}
         ${typeof renderImportPanel === "function" ? renderImportPanel() : ""}
         <div class="summary-grid compact-metrics">
-          <div class="metric"><span>数据表数量</span><strong>10</strong></div>
+          <div class="metric"><span>数据表数量</span><strong>12</strong></div>
           <div class="metric"><span>待上课节</span><strong>${pendingLessons}</strong></div>
           <div class="metric"><span>待收欠费</span><strong>${money(debtTotal)}</strong></div>
           <div class="metric"><span>存储方式</span><strong>本地</strong></div>

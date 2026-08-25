@@ -207,6 +207,22 @@ function exportDataset(type) {
         ["status", "状态"]
       ]
     },
+    scheduleConflicts: {
+      file: "排课冲突检查.csv",
+      rows: typeof flattenScheduleConflictRows === "function" ? flattenScheduleConflictRows() : [],
+      columns: [
+        ["date", "日期"],
+        ["time", "冲突时间"],
+        ["reason", "冲突原因"],
+        ["firstTarget", "课节一对象"],
+        ["firstTeacher", "课节一教师"],
+        ["firstRoom", "课节一教室"],
+        ["secondTarget", "课节二对象"],
+        ["secondTeacher", "课节二教师"],
+        ["secondRoom", "课节二教室"],
+        ["status", "处理状态"]
+      ]
+    },
     ledger: {
       file: "消课流水.csv",
       rows: appState.ledger,
@@ -281,6 +297,7 @@ function renderDataCenter() {
     ["点名考勤", appState.attendance?.length || 0, "attendance", "导出考勤"],
     ["收款流水", appState.payments?.length || 0, "payments", "导出收款"],
     ["课表课节", appState.lessons.length, "lessons", "导出课表"],
+    ["排课冲突", typeof flattenScheduleConflictRows === "function" ? flattenScheduleConflictRows().length : 0, "scheduleConflicts", "导出冲突"],
     ["消课流水", appState.ledger.length, "ledger", "导出流水"]
   ];
 
@@ -300,7 +317,7 @@ function renderDataCenter() {
         ${renderNotice("data")}
         ${typeof renderImportPanel === "function" ? renderImportPanel() : ""}
         <div class="summary-grid compact-metrics">
-          <div class="metric"><span>数据表数量</span><strong>12</strong></div>
+          <div class="metric"><span>数据表数量</span><strong>13</strong></div>
           <div class="metric"><span>待上课节</span><strong>${pendingLessons}</strong></div>
           <div class="metric"><span>待收欠费</span><strong>${money(debtTotal)}</strong></div>
           <div class="metric"><span>存储方式</span><strong>本地</strong></div>

@@ -346,6 +346,38 @@ function renderTemplates() {
     </section>`;
 }
 
+function renderCellValue(value) {
+  const cleanValue = text(value);
+  const className = cleanValue.length > 80 || cleanValue.includes("\n") ? "excel-cell excel-cell-long" : "excel-cell";
+  return `<div class="${className}">${escapeHtml(cleanValue)}</div>`;
+}
+
+function extractSheetNotes(sheet) {
+  const notes = [];
+  for (const row of sheet.rows || []) {
+    for (const cell of row.cells || []) {
+      const value = text(cell.value);
+      const isInstruction = value.includes("导入提示") || value.includes("填写规范") || value.includes("其他注意") || value.length > 120;
+      if (isInstruction) {
+        notes.push({ row: row.row, column: cell.column, value });
+      }
+    }
+  }
+  return notes.slice(0, 4);
+}
+
+function renderWorkbookStats(book, sheet) {
+  const requiredCount = (sheet.requiredFields || []).length;
+  const sheetCount = (book.sheets || []).length;
+  return `
+    <div class="excel-stats">
+      <div><span>工作表</span><strong>${sheetCount}</strong></div>
+      <div><span>已用区域</span><strong>${sheet.usedRows || 0} × ${sheet.usedCols || 0}</strong></div>
+      <div><span>捕获区域</span><strong>${sheet.capturedRows || 0} × ${sheet.capturedCols || 0}</strong></div>
+      <div><span>必填字段</span><strong>${requiredCount}</strong></div>
+    </div>`;
+}
+
 function renderExcelPreview() {
   if (!excelPreview) {
     return `
@@ -385,18 +417,25 @@ function renderExcelPreview() {
   const sheets = book.sheets || [];
   selectedSheetIndex = Math.min(selectedSheetIndex, Math.max(sheets.length - 1, 0));
   const sheet = sheets[selectedSheetIndex] || { headers: [], rows: [] };
-  const rows = (sheet.rows || []).slice(0, 18).map((row) => {
+  const visibleCols = Array.from({ length: sheet.capturedCols || sheet.usedCols || 8 }, (_, index) => index + 1);
+  const rows = (sheet.rows || []).map((row) => {
     const cells = new Map((row.cells || []).map((cell) => [cell.column, cell.value]));
-    const visibleCols = Array.from({ length: Math.min(sheet.usedCols || 8, 12) }, (_, index) => index + 1);
-    return `<tr><td>${row.row}</td>${visibleCols.map((col) => `<td>${escapeHtml(cells.get(col) || "")}</td>`).join("")}</tr>`;
+    return `<tr><td class="row-number">${row.row}</td>${visibleCols.map((col) => `<td>${renderCellValue(cells.get(col) || "")}</td>`).join("")}</tr>`;
   });
-  const visibleHeaders = Array.from({ length: Math.min(sheet.usedCols || 8, 12) }, (_, index) => `列${index + 1}`);
+  const visibleHeaders = visibleCols.map((col) => `列${col}`);
   const fieldRows = (sheet.headers || []).map(
     (field) => `<tr>
       <td>${field.column}</td>
       <td>${field.required ? tag(field.name, "red") : escapeHtml(field.name)}</td>
       <td>${field.required ? "必填" : "选填"}</td>
     </tr>`
+  );
+  const notes = extractSheetNotes(sheet);
+  const noteCards = notes.map(
+    (note) => `<div class="stack-item">
+      <strong>第 ${note.row} 行 / 第 ${note.column} 列</strong>
+      <pre>${escapeHtml(note.value)}</pre>
+    </div>`
   );
 
   return `
@@ -417,13 +456,14 @@ function renderExcelPreview() {
             ${sheets.map((item, index) => `<option value="${index}" ${index === selectedSheetIndex ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}
           </select>
         </div>
+        ${renderWorkbookStats(book, sheet)}
         <div class="layout-two">
           <div>
             <div class="section-head compact-head">
               <h3>${escapeHtml(sheet.name || "工作表")}</h3>
-              <span class="muted">已用区域 ${sheet.usedRows || 0} 行 × ${sheet.usedCols || 0} 列</span>
+              <span class="muted">完整展示 ${visibleCols.length} 列，${(sheet.rows || []).length} 个非空行</span>
             </div>
-            ${table(["行号", ...visibleHeaders], rows)}
+            <div class="excel-grid">${table(["行号", ...visibleHeaders], rows)}</div>
           </div>
           <div>
             <div class="section-head compact-head">
@@ -433,6 +473,11 @@ function renderExcelPreview() {
             ${table(["列", "字段", "规则"], fieldRows)}
           </div>
         </div>
+        <div class="section-head compact-head note-head">
+          <h3>填写说明</h3>
+          <span class="muted">${notes.length ? "已提取长文本说明" : "当前工作表没有明显说明文本"}</span>
+        </div>
+        <div class="excel-notes">${noteCards.join("") || `<div class="stack-item"><span class="muted">暂无填写说明。</span></div>`}</div>
       </div>
     </section>`;
 }

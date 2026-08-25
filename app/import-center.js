@@ -114,12 +114,126 @@ const importProfiles = {
         经办人: "前台老师"
       }
     ]
+  },
+  courses: {
+    title: "课程报价",
+    fileName: "课程报价导入样例.csv",
+    headers: ["课程名称", "售卖状态", "课程类型", "授课方式", "数量（课时）", "总价金额(元）", "科目", "年级", "班型"],
+    sample: [
+      {
+        课程名称: "初一数学同步班",
+        售卖状态: "在售",
+        课程类型: "普通课程",
+        授课方式: "线下",
+        "数量（课时）": "20",
+        "总价金额(元）": "2600",
+        科目: "数学",
+        年级: "初一年级",
+        班型: "小班"
+      }
+    ]
+  },
+  rooms: {
+    title: "教室资料",
+    fileName: "教室导入样例.csv",
+    headers: ["教室名称", "校区", "容量", "教室类型", "状态", "备注"],
+    sample: [
+      {
+        教室名称: "东楼202室",
+        校区: "主校区",
+        容量: "14",
+        教室类型: "线下教室",
+        状态: "可排课",
+        备注: "初中小班"
+      }
+    ]
+  },
+  employees: {
+    title: "员工资料",
+    fileName: "员工导入样例.csv",
+    headers: ["员工姓名", "员工手机号", "员工类型", "所属部门", "校区角色", "科目", "年级", "是否是教师", "每周容量"],
+    sample: [
+      {
+        员工姓名: "数学-李老师",
+        员工手机号: "13900018888",
+        员工类型: "正式员工",
+        所属部门: "教学部",
+        校区角色: "教师",
+        科目: "数学",
+        年级: "初中",
+        是否是教师: "是",
+        每周容量: "20"
+      }
+    ]
+  },
+  classes: {
+    title: "班级资料",
+    fileName: "班级导入样例.csv",
+    headers: ["班级名称", "关联课程", "满班人数", "班主任", "上课教室", "默认上课教师", "学生扣除课时数", "教师记录课时数", "期段", "状态"],
+    sample: [
+      {
+        班级名称: "26春初一数学A班",
+        关联课程: "初一数学同步班",
+        满班人数: "16",
+        班主任: "教务-刘老师",
+        上课教室: "东楼202室",
+        默认上课教师: "数学-李老师",
+        学生扣除课时数: "1",
+        教师记录课时数: "1",
+        期段: "春季班",
+        状态: "招生中"
+      }
+    ]
+  },
+  classSchedules: {
+    title: "班级日程",
+    fileName: "班级日程导入样例.csv",
+    headers: ["班级名称", "开始日期", "结束日期", "重复规则", "开始时间", "结束时间", "上课教师", "上课助教", "上课教室", "科目"],
+    sample: [
+      {
+        班级名称: "26春初一数学A班",
+        开始日期: "2026-09-07",
+        结束日期: "2026-09-28",
+        重复规则: "每周重复",
+        开始时间: "18:30",
+        结束时间: "20:00",
+        上课教师: "数学-李老师",
+        上课助教: "教务-刘老师",
+        上课教室: "东楼202室",
+        科目: "数学"
+      }
+    ]
+  },
+  oneToOneSchedules: {
+    title: "1 对 1 日程",
+    fileName: "一对一日程导入样例.csv",
+    headers: ["1对1名称", "开始日期", "结束日期", "重复规则", "开始时间", "结束时间", "上课教师", "上课助教", "上课教室", "科目"],
+    sample: [
+      {
+        "1对1名称": "测试学员-初一一对一",
+        开始日期: "2026-09-08",
+        结束日期: "",
+        重复规则: "不重复",
+        开始时间: "19:00",
+        结束时间: "20:00",
+        上课教师: "数学-李老师",
+        上课助教: "教务-刘老师",
+        上课教室: "东楼202室",
+        科目: "数学"
+      }
+    ]
   }
 };
 
 function renderImportPanel() {
   const report = lastImportReport;
   const selectedType = report?.type || pendingImportType || "students";
+  const sampleButtons = Object.entries(importProfiles)
+    .map(([type, profile]) => `<button class="small-button" type="button" data-import-sample="${type}">${escapeHtml(profile.title)}样例</button>`)
+    .join("");
+  const typeOptions = Object.entries(importProfiles)
+    .map(([type, profile]) => `<option value="${type}" ${selectedType === type ? "selected" : ""}>${escapeHtml(profile.title)}</option>`)
+    .join("");
   return `
     <div class="import-panel">
       <div class="import-panel-head">
@@ -127,20 +241,16 @@ function renderImportPanel() {
           <strong>批量导入</strong>
           <span class="muted">支持 Excel 另存为 CSV 后导入，先校验，错误会逐行说明。</span>
         </div>
-        <div class="action-row">
-          <button class="small-button" type="button" data-import-sample="students">学员样例</button>
-          <button class="small-button" type="button" data-import-sample="orders">订单样例</button>
-        </div>
+        <div class="action-row">${sampleButtons}</div>
       </div>
       <div class="import-controls">
         <label>导入类型
           <select id="importType">
-            <option value="students" ${selectedType === "students" ? "selected" : ""}>学员档案</option>
-            <option value="orders" ${selectedType === "orders" ? "selected" : ""}>订单课时</option>
+            ${typeOptions}
           </select>
         </label>
         <button class="primary-action" type="button" id="chooseImportFile">选择 CSV 文件</button>
-        <span class="muted">CSV 表头可使用本系统导出的中文列名。</span>
+        <span class="muted">CSV 表头可使用本系统导出的中文列名；批量日程会自动跳过冲突课节。</span>
       </div>
       ${report ? renderImportReport(report) : ""}
     </div>`;
@@ -424,9 +534,397 @@ function importOrders(records) {
   return { success, errors };
 }
 
+function ensureImportDependencies() {
+  if (typeof ensureMasterData === "function") ensureMasterData();
+  if (typeof ensureStaffData === "function") ensureStaffData();
+  if (!Array.isArray(appState.scheduleBatches)) appState.scheduleBatches = [];
+}
+
+function splitImportList(value) {
+  return text(value)
+    .split(/[、,，;]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeImportTime(value) {
+  const cleanValue = text(value).trim();
+  const match = cleanValue.match(/^(\d{1,2}):(\d{1,2})$/);
+  if (!match) return "";
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return "";
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function yesNoValue(value) {
+  return ["是", "Y", "YES", "TRUE", "1"].includes(text(value).trim().toUpperCase()) ? "是" : "否";
+}
+
+function validateCourseRow(row, importNames) {
+  const errors = [];
+  const name = readField(row, ["课程名称", "报价单名称", "courseName", "name"]);
+  const hours = readNumber(row, ["数量（课时）", "数量(课时)", "标准课时", "课时", "hours"], "数量（课时）", errors, { required: true, min: 1 });
+  const price = readNumber(row, ["总价金额(元）", "总价金额(元)", "总价金额", "标准价", "price"], "总价金额", errors, { required: true, min: 0 });
+
+  if (!name) errors.push("课程名称不能为空");
+  if (name.length > 50) errors.push("课程名称不能超过 50 个字");
+  if (name && appState.courses.some((item) => item.name === name)) errors.push(`课程已存在：${name}`);
+  if (name && importNames.has(name)) errors.push(`本次文件内课程重复：${name}`);
+
+  return {
+    errors,
+    data: {
+      name,
+      subject: readField(row, ["科目", "subject"]) || "待维护",
+      grade: readField(row, ["年级", "学段", "grade"]) || "未分年级",
+      type: readField(row, ["课程类型", "班型", "type"]) || "普通课程",
+      mode: readField(row, ["授课方式", "mode"]) || "线下",
+      hours,
+      price,
+      status: readField(row, ["售卖状态", "状态", "status"]) || "在售"
+    }
+  };
+}
+
+function importCourses(records) {
+  ensureImportDependencies();
+  const importNames = new Set();
+  const validRows = [];
+  const errors = [];
+
+  records.forEach((row) => {
+    const result = validateCourseRow(row, importNames);
+    if (result.errors.length) {
+      errors.push({ row: row.__row, reason: result.errors.join("；"), preview: row.__raw });
+      return;
+    }
+    importNames.add(result.data.name);
+    validRows.push(result.data);
+  });
+
+  validRows.forEach((item) => appState.courses.unshift(item));
+  return { success: validRows.length, errors };
+}
+
+function validateRoomRow(row, importNames) {
+  const errors = [];
+  const name = readField(row, ["教室名称", "上课教室", "room", "name"]);
+  const capacity = readNumber(row, ["容量", "满班人数", "capacity"], "容量", errors, { required: true, min: 1 });
+
+  if (!name) errors.push("教室名称不能为空");
+  if (name && appState.rooms.some((item) => item.name === name)) errors.push(`教室已存在：${name}`);
+  if (name && importNames.has(name)) errors.push(`本次文件内教室重复：${name}`);
+
+  return {
+    errors,
+    data: {
+      name,
+      campus: readField(row, ["校区", "campus"]) || "主校区",
+      capacity,
+      type: readField(row, ["教室类型", "类型", "type"]) || "线下教室",
+      status: readField(row, ["状态", "status"]) || "可排课",
+      note: readField(row, ["备注", "note"])
+    }
+  };
+}
+
+function importRooms(records) {
+  ensureImportDependencies();
+  const importNames = new Set();
+  const validRows = [];
+  const errors = [];
+
+  records.forEach((row) => {
+    const result = validateRoomRow(row, importNames);
+    if (result.errors.length) {
+      errors.push({ row: row.__row, reason: result.errors.join("；"), preview: row.__raw });
+      return;
+    }
+    importNames.add(result.data.name);
+    validRows.push(result.data);
+  });
+
+  validRows.forEach((item) => appState.rooms.unshift(item));
+  return { success: validRows.length, errors };
+}
+
+function validateEmployeeRow(row, importNames) {
+  const errors = [];
+  const name = readField(row, ["员工姓名", "教师姓名", "姓名", "name"]);
+  const phone = readField(row, ["员工手机号", "手机号", "phone"]);
+  const roles = readField(row, ["校区角色", "角色", "roles"]) || "教师";
+  const roleNames = splitImportList(roles);
+  const existingRoles = new Set((appState.roles || []).map((item) => item.name));
+  const weeklyHours = readNumber(row, ["每周容量", "每周课时", "weeklyHours"], "每周容量", errors, { min: 0 });
+
+  if (!name) errors.push("员工姓名不能为空");
+  if (phone && !/^1\d{10}$/.test(phone)) errors.push("员工手机号必须是 1 开头的 11 位数字");
+  if (name && appState.employees?.some((item) => item.name === name)) errors.push(`员工已存在：${name}`);
+  if (name && importNames.has(name)) errors.push(`本次文件内员工重复：${name}`);
+  roleNames.forEach((role) => {
+    if (!existingRoles.has(role)) errors.push(`角色不存在：${role}`);
+  });
+
+  return {
+    errors,
+    data: {
+      name,
+      phone,
+      employeeType: readField(row, ["员工类型", "employeeType"]) || "正式员工",
+      department: readField(row, ["所属部门", "部门", "department"]) || "教学部",
+      roles,
+      subjects: readField(row, ["科目", "subjects"]),
+      grades: readField(row, ["年级", "grades"]),
+      isTeacher: yesNoValue(readField(row, ["是否是教师", "是否教师", "isTeacher"])),
+      weeklyHours: weeklyHours || 20,
+      status: readField(row, ["状态", "status"]) || "在职"
+    }
+  };
+}
+
+function importEmployees(records) {
+  ensureImportDependencies();
+  const importNames = new Set();
+  const validRows = [];
+  const errors = [];
+
+  records.forEach((row) => {
+    const result = validateEmployeeRow(row, importNames);
+    if (result.errors.length) {
+      errors.push({ row: row.__row, reason: result.errors.join("；"), preview: row.__raw });
+      return;
+    }
+    importNames.add(result.data.name);
+    validRows.push(result.data);
+  });
+
+  validRows.forEach((employee) => {
+    appState.employees.unshift(employee);
+    if (employee.isTeacher === "是" && !appState.teachers.some((item) => item.name === employee.name)) {
+      appState.teachers.unshift({
+        name: employee.name,
+        phone: employee.phone,
+        subjects: employee.subjects || "待维护",
+        grades: employee.grades || "待维护",
+        role: "任课老师",
+        weeklyHours: employee.weeklyHours,
+        status: employee.status
+      });
+    }
+  });
+  return { success: validRows.length, errors };
+}
+
+function validateClassRow(row, importNames) {
+  const errors = [];
+  const name = readField(row, ["班级名称", "班级", "className", "name"]);
+  const course = readField(row, ["关联课程", "课程", "报读课程", "course"]);
+  const teacher = readField(row, ["默认上课教师", "上课教师", "教师", "teacher"]);
+  const room = readField(row, ["上课教室", "教室", "room"]);
+  const capacity = readNumber(row, ["满班人数", "容量", "capacity"], "满班人数", errors, { required: true, min: 1 });
+  const deduct = readNumber(row, ["学生扣除课时数", "扣课课时", "deduct"], "学生扣除课时数", errors, { required: true, min: 0 });
+  const teacherHours = readNumber(row, ["教师记录课时数", "教师课时", "teacherHours"], "教师记录课时数", errors, { required: true, min: 0 });
+
+  if (!name) errors.push("班级名称不能为空");
+  if (name && appState.classes.some((item) => item.name === name)) errors.push(`班级已存在：${name}`);
+  if (name && importNames.has(name)) errors.push(`本次文件内班级重复：${name}`);
+  if (!course) errors.push("关联课程不能为空");
+  if (course && !appState.courses.some((item) => item.name === course)) errors.push(`课程不存在：${course}`);
+  if (!teacher) errors.push("默认上课教师不能为空");
+  if (teacher && !appState.teachers.some((item) => item.name === teacher)) errors.push(`教师不存在：${teacher}`);
+  if (!room) errors.push("上课教室不能为空");
+  if (room && !appState.rooms.some((item) => item.name === room)) errors.push(`教室不存在：${room}`);
+
+  return {
+    errors,
+    data: {
+      name,
+      course,
+      teacher,
+      assistant: readField(row, ["班主任", "上课助教", "助教", "assistant"]),
+      room,
+      capacity,
+      students: 0,
+      deduct,
+      teacherHours,
+      stage: readField(row, ["期段", "学段", "stage"]) || "常规班",
+      status: readField(row, ["状态", "status"]) || "招生中"
+    }
+  };
+}
+
+function importClasses(records) {
+  ensureImportDependencies();
+  const importNames = new Set();
+  const validRows = [];
+  const errors = [];
+
+  records.forEach((row) => {
+    const result = validateClassRow(row, importNames);
+    if (result.errors.length) {
+      errors.push({ row: row.__row, reason: result.errors.join("；"), preview: row.__raw });
+      return;
+    }
+    importNames.add(result.data.name);
+    validRows.push(result.data);
+  });
+
+  validRows.forEach((item) => appState.classes.unshift(item));
+  syncClassCounts();
+  return { success: validRows.length, errors };
+}
+
+function scheduleRepeatStep(rule) {
+  const cleanRule = text(rule).trim();
+  if (!cleanRule || cleanRule === "不重复") return 0;
+  if (cleanRule.includes("每天")) return 1;
+  if (cleanRule.includes("隔周")) return 14;
+  if (cleanRule.includes("每周")) return 7;
+  return NaN;
+}
+
+function scheduleDatesFromRow(row, errors) {
+  const startDate = normalizeImportDate(readField(row, ["开始日期", "上课日期", "date"]));
+  const endDate = normalizeImportDate(readField(row, ["结束日期", "endDate"]));
+  const rule = readField(row, ["重复规则", "repeatRule"]) || "不重复";
+  const step = scheduleRepeatStep(rule);
+
+  if (!startDate) errors.push("开始日期格式不正确");
+  if (!Number.isFinite(step)) errors.push(`重复规则不支持：${rule}`);
+  if (step > 0 && !endDate) errors.push("非不重复日程必须填写结束日期");
+  if (errors.length) return [];
+
+  const firstDate = dateFromIso(startDate);
+  const lastDate = dateFromIso(step > 0 ? endDate : startDate);
+  if (!Number.isFinite(firstDate.getTime()) || !Number.isFinite(lastDate.getTime()) || firstDate > lastDate) {
+    errors.push("日期范围不正确");
+    return [];
+  }
+
+  const dates = [];
+  for (let date = firstDate; date <= lastDate; date = addDays(date, step || 1)) {
+    dates.push(isoFromDate(date));
+    if (!step) break;
+  }
+  return dates;
+}
+
+function validateScheduleRow(row, scheduleType) {
+  ensureImportDependencies();
+  const errors = [];
+  const target = scheduleType === "classSchedules"
+    ? readField(row, ["班级名称", "班级", "target"])
+    : readField(row, ["1对1名称", "一对一名称", "班级名称", "target"]);
+  const classItem = scheduleType === "classSchedules" ? getClass(target) : null;
+  const teacher = readField(row, ["上课教师", "教师", "teacher"]);
+  const room = readField(row, ["上课教室", "教室", "room"]);
+  const startTime = normalizeImportTime(readField(row, ["开始时间", "startTime"]));
+  const endTime = normalizeImportTime(readField(row, ["结束时间", "endTime"]));
+  const dates = scheduleDatesFromRow(row, errors);
+
+  if (!target) errors.push(scheduleType === "classSchedules" ? "班级名称不能为空" : "1 对 1 名称不能为空");
+  if (scheduleType === "classSchedules" && target && !classItem) errors.push(`班级不存在：${target}`);
+  if (!teacher) errors.push("上课教师不能为空");
+  if (teacher && !appState.teachers.some((item) => item.name === teacher)) errors.push(`教师不存在：${teacher}`);
+  if (!room) errors.push("上课教室不能为空");
+  if (room && !appState.rooms.some((item) => item.name === room)) errors.push(`教室不存在：${room}`);
+  if (!startTime || !endTime) errors.push("开始时间和结束时间必须形如 18:30");
+
+  const time = `${startTime}-${endTime}`;
+  const subject = readField(row, ["科目", "subject"]) || classItem?.course || "课程";
+  const candidates = dates.map((date, index) => ({
+    id: `${nextId("L")}${String(index + 1).padStart(2, "0")}`,
+    day: dayFromDate(date),
+    date,
+    time,
+    type: scheduleType === "classSchedules" ? "班级课" : "1对1",
+    target,
+    subject,
+    teacher,
+    room,
+    assistant: readField(row, ["上课助教", "助教", "assistant"]),
+    status: "待上课",
+    deduct: Number(classItem?.deduct || 1)
+  }));
+
+  if (candidates.some((lesson) => typeof isValidLessonRange === "function" && !isValidLessonRange(lesson))) errors.push("结束时间必须晚于开始时间");
+
+  return { errors, candidates, rule: readField(row, ["重复规则", "repeatRule"]) || "不重复" };
+}
+
+function importSchedules(records, scheduleType) {
+  ensureImportDependencies();
+  let success = 0;
+  const errors = [];
+
+  records.forEach((row) => {
+    const result = validateScheduleRow(row, scheduleType);
+    if (result.errors.length) {
+      errors.push({ row: row.__row, reason: result.errors.join("；"), preview: row.__raw });
+      return;
+    }
+
+    const created = [];
+    const skipped = [];
+    result.candidates.forEach((candidate) => {
+      const conflicts = findLessonConflicts(candidate);
+      if (conflicts.length) {
+        skipped.push(`${candidate.date} ${candidate.time}：${conflicts.map((item) => `${item.target} ${item.reasons?.join("、") || ""}`).join("；")}`);
+        return;
+      }
+      appState.lessons.push(candidate);
+      created.push(candidate);
+    });
+
+    if (created.length) {
+      success += created.length;
+      appState.scheduleBatches.unshift({
+        id: nextId("B"),
+        createdAt: new Date().toLocaleString("zh-CN", { hour12: false }),
+        target: created[0].target,
+        subject: created[0].subject,
+        teacher: created[0].teacher,
+        room: created[0].room,
+        startDate: created[0].date,
+        endDate: created[created.length - 1].date,
+        weekdays: [...new Set(created.map((lesson) => lesson.day))],
+        time: created[0].time,
+        createdCount: created.length,
+        skippedCount: skipped.length,
+        skippedDetail: skipped.join(" | "),
+        operator: "导入"
+      });
+    }
+
+    if (skipped.length) {
+      errors.push({ row: row.__row, reason: `已新增 ${created.length} 节，跳过 ${skipped.length} 节冲突课：${skipped.join("；")}`, preview: row.__raw });
+    }
+    if (!created.length && !skipped.length) {
+      errors.push({ row: row.__row, reason: "没有生成任何课节，请检查日期和重复规则", preview: row.__raw });
+    }
+  });
+
+  return { success, errors };
+}
+
+function runImportByType(type, records) {
+  const importers = {
+    students: importStudents,
+    orders: importOrders,
+    courses: importCourses,
+    rooms: importRooms,
+    employees: importEmployees,
+    classes: importClasses,
+    classSchedules: (items) => importSchedules(items, "classSchedules"),
+    oneToOneSchedules: (items) => importSchedules(items, "oneToOneSchedules")
+  };
+  return (importers[type] || importStudents)(records);
+}
+
 function runImport(type, content, fileName) {
   const { records } = csvToObjects(content);
-  const result = type === "orders" ? importOrders(records) : importStudents(records);
+  const result = runImportByType(type, records);
   lastImportReport = {
     type,
     fileName,

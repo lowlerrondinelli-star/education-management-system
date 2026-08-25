@@ -47,6 +47,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 22px;
+  min-width: 0;
 }
 
 .brand {
@@ -85,6 +86,8 @@ button {
 .nav-list {
   display: grid;
   gap: 8px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .nav-button {
@@ -226,6 +229,57 @@ button {
   display: block;
   font-size: 30px;
   margin-top: 8px;
+}
+
+.metric small {
+  display: block;
+  color: var(--muted);
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.dashboard-hero {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dashboard-hero h3 {
+  margin: 4px 0 6px;
+  font-size: 22px;
+}
+
+.dashboard-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.dashboard-task {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dashboard-task > div {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.dashboard-task .small-button {
+  flex: 0 0 auto;
 }
 
 .layout-two {
@@ -718,11 +772,28 @@ tr:hover td {
   }
 
   .sidebar {
-    position: static;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    gap: 12px;
+    padding: 12px;
   }
 
   .nav-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 2px;
+    width: 100%;
+  }
+
+  .nav-button {
+    min-width: 138px;
+    flex: 0 0 138px;
+  }
+
+  .sidebar-note {
+    display: none;
   }
 
   .layout-two,
@@ -733,6 +804,15 @@ tr:hover td {
   .master-grid,
   .data-help {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dashboard-actions {
+    justify-content: flex-start;
   }
 }
 
@@ -751,8 +831,59 @@ tr:hover td {
     min-width: 100%;
   }
 
-  .nav-list {
-    grid-template-columns: 1fr;
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+    font-size: 19px;
+  }
+
+  .brand h1 {
+    font-size: 18px;
+  }
+
+  .brand p {
+    font-size: 12px;
+  }
+
+  .nav-button {
+    min-width: 116px;
+    flex-basis: 116px;
+    grid-template-columns: 22px 1fr;
+  }
+
+  .nav-count {
+    display: none;
+  }
+
+  .topbar h2 {
+    font-size: 22px;
+  }
+
+  .dashboard-actions,
+  .dashboard-actions .primary-action,
+  .dashboard-actions .small-button,
+  .action-row,
+  .action-row .small-button {
+    width: 100%;
+  }
+
+  .dashboard-task {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dashboard-task .small-button {
+    width: 100%;
+  }
+
+  .section-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .table-wrap {
+    margin: 0 -16px;
+    padding: 0 16px;
   }
 
   .form-grid {

@@ -216,18 +216,49 @@ function table(headers, rows) {
     </div>`;
 }
 
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function lessonDateTime(lesson) {
+  return new Date(`${lesson.date}T${text(lesson.time).slice(0, 5) || "00:00"}`);
+}
+
+function compareLessonTime(a, b) {
+  return lessonDateTime(a) - lessonDateTime(b);
+}
+
+function dashboardTaskCard(title, detail, tone, action, goView) {
+  return `<div class="dashboard-task">
+    <div>
+      <strong>${tag(title, tone)}</strong>
+      <span class="muted">${escapeHtml(detail)}</span>
+    </div>
+    ${goView ? `<button class="small-button" type="button" data-go="${goView}">${escapeHtml(action)}</button>` : ""}
+  </div>`;
+}
+
 function renderDashboard() {
   const debtTotal = appState.orders.reduce((sum, order) => sum + Number(order.debt || 0), 0);
   const lowBalance = appState.students.filter((student) => Number(student.balance) > 0 && Number(student.balance) <= 3).length;
   const pendingLessons = appState.lessons.filter((lesson) => lesson.status === "待上课").length;
   const activeClasses = appState.classes.filter((item) => item.status === "开课中").length;
+  const today = todayIsoDate();
+  const todayLessons = appState.lessons.filter((lesson) => lesson.date === today && lesson.status === "待上课").sort(compareLessonTime);
+  const upcomingLessons = appState.lessons
+    .filter((lesson) => lesson.status === "待上课" && lesson.date >= today)
+    .sort(compareLessonTime);
+  const nextLessons = (todayLessons.length ? todayLessons : upcomingLessons).slice(0, 6);
+  const overdueLessons = appState.lessons.filter((lesson) => lesson.status === "待上课" && lesson.date < today).length;
+  const unpaidStudents = appState.students.filter((student) => Number(student.debt || 0) > 0);
+  const lowBalanceStudents = appState.students.filter((student) => Number(student.balance) > 0 && Number(student.balance) <= 3);
+  const followUpCount = typeof flattenFollowUpRows === "function" ? flattenFollowUpRows().length : unpaidStudents.length + lowBalanceStudents.length;
 
-  const lessonRows = appState.lessons
-    .filter((lesson) => lesson.status === "待上课")
-    .slice(0, 5)
+  const lessonRows = nextLessons
     .map(
       (lesson) => `<tr>
         <td>${escapeHtml(lesson.date)}</td>
+        <td>${escapeHtml(dayFromDate(lesson.date))}</td>
         <td>${escapeHtml(lesson.time)}</td>
         <td>${escapeHtml(lesson.target)}</td>
         <td>${escapeHtml(lesson.teacher)}</td>
@@ -236,27 +267,47 @@ function renderDashboard() {
     );
 
   const reminders = [
-    ...appState.students.filter((student) => student.debt > 0).map((student) => ({ title: `${student.name} 有欠费`, detail: `${money(student.debt)}，跟进人：${student.owner}`, tone: "red" })),
-    ...appState.students.filter((student) => student.balance > 0 && student.balance <= 3).map((student) => ({ title: `${student.name} 课时不足`, detail: `剩余 ${student.balance} 课时，建议提醒续费`, tone: "amber" })),
-    { title: "导入前校验", detail: "手机号、日期、课时、金额、字典值必须先检查", tone: "" }
-  ];
+    ...unpaidStudents.map((student) => ({ title: `${student.name} 有欠费`, detail: `${money(student.debt)}，跟进人：${student.owner}`, tone: "red", go: "orders", action: "处理订单" })),
+    ...lowBalanceStudents.map((student) => ({ title: `${student.name} 课时不足`, detail: `剩余 ${student.balance} 课时，建议提醒续费`, tone: "amber", go: "followUp", action: "去跟进" })),
+    ...(overdueLessons ? [{ title: `${overdueLessons} 节课未处理`, detail: "存在早于今天但仍为待上课的课节，请核对是否需要补点名。", tone: "red", go: "schedule", action: "看课表" }] : []),
+    { title: "导入前校验", detail: "手机号、日期、课时、金额、字典值必须先检查", tone: "", go: "data", action: "去导入" }
+  ].slice(0, 8);
 
   appContent.innerHTML = `
-    <div class="summary-grid">
-      <div class="metric"><span>学员总数</span><strong>${appState.students.length}</strong></div>
-      <div class="metric"><span>待上课节</span><strong>${pendingLessons}</strong></div>
-      <div class="metric"><span>开课班级</span><strong>${activeClasses}</strong></div>
-      <div class="metric"><span>待收欠费</span><strong>${money(debtTotal)}</strong></div>
+    <section class="dashboard-hero">
+      <div>
+        <p class="eyebrow">今日工作台</p>
+        <h3>先看课表，再处理欠费和课时不足。</h3>
+        <span class="muted">适合前台、教务、老师打开系统后的第一屏。</span>
+      </div>
+      <div class="dashboard-actions">
+        <button class="primary-action" type="button" data-go="students">学员建档</button>
+        <button class="small-button" type="button" data-go="orders">报名收款</button>
+        <button class="small-button" type="button" data-go="schedule">排课点名</button>
+        <button class="small-button" type="button" data-go="leaves">请假补课</button>
+      </div>
+    </section>
+    <div class="summary-grid dashboard-summary">
+      <div class="metric"><span>今日待上</span><strong>${todayLessons.length}</strong><small>${pendingLessons} 节未完成</small></div>
+      <div class="metric"><span>待办跟进</span><strong>${followUpCount}</strong><small>${lowBalance} 个课时不足</small></div>
+      <div class="metric"><span>开课班级</span><strong>${activeClasses}</strong><small>${appState.classes.length} 个班级</small></div>
+      <div class="metric"><span>待收欠费</span><strong>${money(debtTotal)}</strong><small>${unpaidStudents.length} 名学员</small></div>
     </div>
     <div class="layout-two">
       <section class="section">
-        <div class="section-head"><h3>待处理课表</h3><button class="small-button" data-go="schedule" type="button">查看课表</button></div>
-        <div class="section-body">${table(["日期", "时间", "班级/1对1", "教师", "教室"], lessonRows)}</div>
+        <div class="section-head">
+          <div>
+            <h3>${todayLessons.length ? "今日待上课表" : "最近待上课表"}</h3>
+            <span class="muted">${todayLessons.length ? "按上课时间排序，方便老师点名。" : "今天没有待上课节，已显示未来最近课节。"}</span>
+          </div>
+          <button class="small-button" data-go="schedule" type="button">查看课表</button>
+        </div>
+        <div class="section-body">${table(["日期", "星期", "时间", "班级/1对1", "教师", "教室"], lessonRows)}</div>
       </section>
       <section class="section">
-        <div class="section-head"><h3>运营提醒</h3><span>${tag(`${lowBalance} 个课时不足`, lowBalance ? "amber" : "green")}</span></div>
+        <div class="section-head"><h3>待办提醒</h3><span>${tag(`${reminders.length} 项`, reminders.length ? "amber" : "green")}</span></div>
         <div class="section-body stack-list">
-          ${reminders.map((item) => `<div class="stack-item"><strong>${tag(item.title, item.tone)}</strong><span class="muted">${escapeHtml(item.detail)}</span></div>`).join("")}
+          ${reminders.map((item) => dashboardTaskCard(item.title, item.detail, item.tone, item.action, item.go)).join("")}
         </div>
       </section>
     </div>`;

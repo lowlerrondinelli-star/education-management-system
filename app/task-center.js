@@ -410,6 +410,23 @@ function cleanDashboardReminderPermissions() {
   }
 }
 
+function cleanDashboardHeroForPermissions() {
+  const hero = appContent.querySelector(".dashboard-hero");
+  if (!hero) return;
+
+  hero.querySelectorAll("[data-go]").forEach((button) => {
+    if (!taskCenterCanViewModule(button.dataset.go)) button.remove();
+  });
+
+  const shouldUseTeachingCopy = !taskCenterCanViewModule("orders") && !taskCenterCanViewModule("followUp");
+  if (shouldUseTeachingCopy) {
+    const title = hero.querySelector("h3");
+    const subtitle = hero.querySelector(".muted");
+    if (title) title.textContent = "先看自己的课表，再完成点名和课后反馈。";
+    if (subtitle) subtitle.textContent = "适合老师打开系统后的第一屏。";
+  }
+}
+
 function cleanDashboardSummaryForPermissions() {
   const summary = appContent.querySelector(".dashboard-summary");
   if (!summary) return;
@@ -428,6 +445,36 @@ function cleanDashboardSummaryForPermissions() {
     <div class="metric"><span>待点名</span><strong>${attendanceTasks}</strong><small>当前账号可处理</small></div>
     <div class="metric"><span>待反馈</span><strong>${feedbackTasks}</strong><small>已上课未发送</small></div>
     <div class="metric"><span>请假补课</span><strong>${leaveTasks}</strong><small>需要协同处理</small></div>`;
+}
+
+function cleanDashboardScheduleForPermissions() {
+  const scheduleSection = [...appContent.querySelectorAll(".section")].find((section) => section.querySelector(".section-head h3")?.textContent.includes("待上课表"));
+  if (!scheduleSection) return;
+
+  const today = todayIsoDate();
+  const accessibleUpcoming = appState.lessons
+    .filter((lesson) => lesson.status === "待上课" && lesson.date >= today && taskCenterCanHandleLesson(lesson))
+    .sort(compareLessonTime);
+  const accessibleToday = accessibleUpcoming.filter((lesson) => lesson.date === today);
+  const nextLessons = (accessibleToday.length ? accessibleToday : accessibleUpcoming).slice(0, 6);
+  const heading = scheduleSection.querySelector(".section-head h3");
+  const subtitle = scheduleSection.querySelector(".section-head .muted");
+  if (heading) heading.textContent = accessibleToday.length ? "今日待上课表" : "最近待上课表";
+  if (subtitle) subtitle.textContent = accessibleToday.length ? "按上课时间排序，方便老师点名。" : "今天没有待上课节，已显示当前账号可查看的未来最近课节。";
+
+  const rows = nextLessons.map(
+    (lesson) => `<tr>
+      <td>${escapeHtml(lesson.date)}</td>
+      <td>${escapeHtml(dayFromDate(lesson.date))}</td>
+      <td>${escapeHtml(lesson.time)}</td>
+      <td>${escapeHtml(lesson.target)}</td>
+      <td>${escapeHtml(lesson.teacher)}</td>
+      <td>${escapeHtml(lesson.room)}</td>
+    </tr>`
+  );
+
+  const sectionBody = scheduleSection.querySelector(".section-body");
+  if (sectionBody) sectionBody.innerHTML = table(["日期", "星期", "时间", "班级/1对1", "教师", "教室"], rows);
 }
 
 function appendTaskCenterPanel() {
@@ -463,7 +510,9 @@ function appendTaskCenterPanel() {
 const baseRenderDashboardForTaskCenter = renderDashboard;
 renderDashboard = function renderDashboardWithTaskCenter() {
   baseRenderDashboardForTaskCenter();
+  cleanDashboardHeroForPermissions();
   cleanDashboardSummaryForPermissions();
+  cleanDashboardScheduleForPermissions();
   cleanDashboardReminderPermissions();
   appendTaskCenterPanel();
 };

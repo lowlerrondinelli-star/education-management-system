@@ -223,6 +223,24 @@ function exportDataset(type) {
         ["status", "处理状态"]
       ]
     },
+    followUps: {
+      file: "续费跟进.csv",
+      rows: typeof flattenFollowUpRows === "function" ? flattenFollowUpRows() : [],
+      columns: [
+        ["id", "跟进编号"],
+        ["student", "学员姓名"],
+        ["phone", "手机号"],
+        ["type", "跟进类型"],
+        ["owner", "跟进人"],
+        ["dueDate", "下次跟进"],
+        ["status", "状态"],
+        ["result", "跟进结果"],
+        ["priority", "优先级"],
+        ["source", "来源"],
+        ["note", "备注"],
+        ["updatedAt", "更新时间"]
+      ]
+    },
     ledger: {
       file: "消课流水.csv",
       rows: appState.ledger,
@@ -283,6 +301,7 @@ function restoreBackupFile(file) {
 function renderDataCenter() {
   if (typeof ensurePaymentData === "function") ensurePaymentData();
   if (typeof ensureStaffData === "function") ensureStaffData();
+  if (typeof ensureFollowUpData === "function") ensureFollowUpData();
   const pendingLessons = appState.lessons.filter((lesson) => lesson.status === "待上课").length;
   const debtTotal = appState.orders.reduce((sum, order) => sum + Number(order.debt || 0), 0);
   const dataCards = [
@@ -298,6 +317,7 @@ function renderDataCenter() {
     ["收款流水", appState.payments?.length || 0, "payments", "导出收款"],
     ["课表课节", appState.lessons.length, "lessons", "导出课表"],
     ["排课冲突", typeof flattenScheduleConflictRows === "function" ? flattenScheduleConflictRows().length : 0, "scheduleConflicts", "导出冲突"],
+    ["续费跟进", typeof flattenFollowUpRows === "function" ? flattenFollowUpRows().length : 0, "followUps", "导出跟进"],
     ["消课流水", appState.ledger.length, "ledger", "导出流水"]
   ];
 
@@ -317,7 +337,7 @@ function renderDataCenter() {
         ${renderNotice("data")}
         ${typeof renderImportPanel === "function" ? renderImportPanel() : ""}
         <div class="summary-grid compact-metrics">
-          <div class="metric"><span>数据表数量</span><strong>13</strong></div>
+          <div class="metric"><span>数据表数量</span><strong>14</strong></div>
           <div class="metric"><span>待上课节</span><strong>${pendingLessons}</strong></div>
           <div class="metric"><span>待收欠费</span><strong>${money(debtTotal)}</strong></div>
           <div class="metric"><span>存储方式</span><strong>本地</strong></div>

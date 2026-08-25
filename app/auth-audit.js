@@ -51,6 +51,7 @@ authStyle.textContent = `
   .auth-card{display:grid;gap:10px}
   .auth-inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .auth-denied{opacity:.45}
+  .auth-hidden-action{display:none!important}
   .audit-table td:first-child{white-space:nowrap}
   @media (max-width: 980px){.auth-bar{width:100%;justify-content:space-between}.auth-bar select{min-width:0;flex:1}}
 `;
@@ -175,6 +176,27 @@ function renderAuthBar() {
   `;
 }
 
+function syncPersistentChromeForAuth() {
+  const newStudentBtn = document.querySelector("#newStudentBtn");
+  if (newStudentBtn) {
+    const canCreateStudent = canAccessView("students");
+    newStudentBtn.hidden = !canCreateStudent;
+    newStudentBtn.disabled = !canCreateStudent;
+    newStudentBtn.classList.toggle("auth-hidden-action", !canCreateStudent);
+    newStudentBtn.title = canCreateStudent ? "" : "当前账号没有学员档案权限";
+  }
+
+  const searchInput = document.querySelector("#globalSearch");
+  if (searchInput) {
+    searchInput.placeholder = canAccessView("students") || canAccessView("orders") || canAccessView("leads") ? "搜索学员、班级、课程、老师" : "搜索课节、课程、老师、请假";
+  }
+
+  const note = document.querySelector(".sidebar-note span");
+  if (note) {
+    note.textContent = canAccessView("orders") || canAccessView("followUp") ? "先处理待上课、欠费、课时不足三类提醒。" : "先处理待上课、点名、课后反馈。";
+  }
+}
+
 function blockUnauthorizedAction(moduleId, label) {
   const targetView = firstAccessibleView();
   setNotice(targetView, `当前账号没有“${authViewLabel(moduleId)}”权限，已拦截 ${label}。`, "amber");
@@ -197,6 +219,7 @@ function disableUnauthorizedActions() {
     newStudentBtn.disabled = true;
     newStudentBtn.title = "当前账号没有学员档案权限";
   }
+  syncPersistentChromeForAuth();
 }
 
 function renderAuthAuditPanel() {
@@ -280,6 +303,7 @@ renderNav = function renderNavWithAuth() {
     if (!canAccessView(button.dataset.view)) button.remove();
   });
   renderAuthBar();
+  syncPersistentChromeForAuth();
 };
 
 const baseRenderViewForAuthAudit = renderView;

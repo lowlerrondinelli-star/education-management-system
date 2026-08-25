@@ -91,6 +91,45 @@ function exportDataset(type) {
         ["status", "状态"]
       ]
     },
+    courses: {
+      file: "课程资料.csv",
+      rows: appState.courses || [],
+      columns: [
+        ["name", "课程名称"],
+        ["subject", "科目"],
+        ["grade", "年级"],
+        ["type", "课程类型"],
+        ["mode", "授课方式"],
+        ["hours", "标准课时"],
+        ["price", "标准价"],
+        ["status", "状态"]
+      ]
+    },
+    teachers: {
+      file: "教师资料.csv",
+      rows: appState.teachers || [],
+      columns: [
+        ["name", "教师姓名"],
+        ["phone", "手机号"],
+        ["subjects", "科目"],
+        ["grades", "年级"],
+        ["role", "角色"],
+        ["weeklyHours", "每周容量"],
+        ["status", "状态"]
+      ]
+    },
+    rooms: {
+      file: "教室资料.csv",
+      rows: appState.rooms || [],
+      columns: [
+        ["name", "教室名称"],
+        ["campus", "校区"],
+        ["capacity", "容量"],
+        ["type", "教室类型"],
+        ["status", "状态"],
+        ["note", "备注"]
+      ]
+    },
     lessons: {
       file: "课表.csv",
       rows: appState.lessons,
@@ -171,6 +210,9 @@ function renderDataCenter() {
     ["学员档案", appState.students.length, "students", "导出学员"],
     ["订单课时", appState.orders.length, "orders", "导出订单"],
     ["班级列表", appState.classes.length, "classes", "导出班级"],
+    ["课程资料", appState.courses?.length || 0, "courses", "导出课程"],
+    ["教师资料", appState.teachers?.length || 0, "teachers", "导出教师"],
+    ["教室资料", appState.rooms?.length || 0, "rooms", "导出教室"],
     ["课表课节", appState.lessons.length, "lessons", "导出课表"],
     ["消课流水", appState.ledger.length, "ledger", "导出流水"]
   ];
@@ -190,7 +232,7 @@ function renderDataCenter() {
       <div class="section-body">
         ${renderNotice("data")}
         <div class="summary-grid compact-metrics">
-          <div class="metric"><span>数据表数量</span><strong>5</strong></div>
+          <div class="metric"><span>数据表数量</span><strong>8</strong></div>
           <div class="metric"><span>待上课节</span><strong>${pendingLessons}</strong></div>
           <div class="metric"><span>待收欠费</span><strong>${money(debtTotal)}</strong></div>
           <div class="metric"><span>存储方式</span><strong>本地</strong></div>

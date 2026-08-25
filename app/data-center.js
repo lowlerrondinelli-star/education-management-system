@@ -241,6 +241,17 @@ function exportDataset(type) {
         ["updatedAt", "更新时间"]
       ]
     },
+    reports: {
+      file: "经营报表.csv",
+      rows: typeof flattenOperationReportRows === "function" ? flattenOperationReportRows() : [],
+      columns: [
+        ["section", "报表分组"],
+        ["item", "项目"],
+        ["value", "指标值"],
+        ["amount", "数值"],
+        ["note", "说明"]
+      ]
+    },
     ledger: {
       file: "消课流水.csv",
       rows: appState.ledger,
@@ -318,6 +329,7 @@ function renderDataCenter() {
     ["课表课节", appState.lessons.length, "lessons", "导出课表"],
     ["排课冲突", typeof flattenScheduleConflictRows === "function" ? flattenScheduleConflictRows().length : 0, "scheduleConflicts", "导出冲突"],
     ["续费跟进", typeof flattenFollowUpRows === "function" ? flattenFollowUpRows().length : 0, "followUps", "导出跟进"],
+    ["经营报表", typeof flattenOperationReportRows === "function" ? flattenOperationReportRows().length : 0, "reports", "导出报表"],
     ["消课流水", appState.ledger.length, "ledger", "导出流水"]
   ];
 
@@ -337,7 +349,7 @@ function renderDataCenter() {
         ${renderNotice("data")}
         ${typeof renderImportPanel === "function" ? renderImportPanel() : ""}
         <div class="summary-grid compact-metrics">
-          <div class="metric"><span>数据表数量</span><strong>14</strong></div>
+          <div class="metric"><span>数据表数量</span><strong>15</strong></div>
           <div class="metric"><span>待上课节</span><strong>${pendingLessons}</strong></div>
           <div class="metric"><span>待收欠费</span><strong>${money(debtTotal)}</strong></div>
           <div class="metric"><span>存储方式</span><strong>本地</strong></div>

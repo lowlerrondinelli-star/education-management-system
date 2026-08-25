@@ -605,6 +605,35 @@ tr:hover td {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.master-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.master-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.master-card h4 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.master-card .operation-grid {
+  grid-template-columns: 1fr;
+}
+
+.master-card .primary-action {
+  justify-self: start;
+}
+
 .template-card {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -701,6 +730,7 @@ tr:hover td {
   .excel-stats,
   .operation-grid,
   .operation-grid.compact,
+  .master-grid,
   .data-help {
     grid-template-columns: 1fr;
   }

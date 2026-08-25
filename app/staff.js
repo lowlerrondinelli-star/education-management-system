@@ -6,6 +6,7 @@ const roleModules = [
   ["schedule", "排课课表"],
   ["attendance", "点名消课"],
   ["consume", "课时流水"],
+  ["feedback", "课后反馈"],
   ["masters", "基础资料"],
   ["data", "数据中心"],
   ["templates", "模板字段库"]
@@ -15,7 +16,7 @@ const defaultRoles = [
   {
     name: "校长/管理员",
     description: "查看和维护全部业务数据",
-    permissions: ["dashboard", "students", "orders", "classes", "schedule", "attendance", "consume", "masters", "data", "templates"],
+    permissions: ["dashboard", "students", "orders", "classes", "schedule", "attendance", "consume", "feedback", "masters", "data", "templates"],
     actions: "查看、新增、编辑、导入、导出"
   },
   {
@@ -27,14 +28,14 @@ const defaultRoles = [
   {
     name: "教务/学管师",
     description: "负责分班、排课、点名和课消核对",
-    permissions: ["dashboard", "students", "classes", "schedule", "attendance", "consume", "masters", "data"],
-    actions: "查看、分班、排课、点名、消课"
+    permissions: ["dashboard", "students", "classes", "schedule", "attendance", "consume", "feedback", "masters", "data"],
+    actions: "查看、分班、排课、点名、消课、反馈"
   },
   {
     name: "教师",
-    description: "查看课表，完成点名和上课确认",
-    permissions: ["dashboard", "schedule", "attendance", "consume"],
-    actions: "查看课表、点名、确认上课"
+    description: "查看课表，完成点名、上课确认和课后反馈",
+    permissions: ["dashboard", "schedule", "attendance", "consume", "feedback"],
+    actions: "查看课表、点名、确认上课、课后反馈"
   },
   {
     name: "财务/收银",

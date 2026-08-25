@@ -3,8 +3,8 @@ const authSessionKey = `${storageKey}-current-user`;
 const authRoleDefaults = {
   "校长/管理员": () => navItems.map((item) => item.id),
   "前台/招生顾问": () => ["dashboard", "leads", "students", "orders", "classes", "followUp", "data", "templates"],
-  "教务/学管师": () => ["dashboard", "leads", "students", "classes", "schedule", "leaves", "consume", "masters", "data"],
-  "教师": () => ["dashboard", "schedule", "leaves", "consume"],
+  "教务/学管师": () => ["dashboard", "leads", "students", "classes", "schedule", "leaves", "consume", "feedback", "masters", "data"],
+  "教师": () => ["dashboard", "schedule", "leaves", "consume", "feedback"],
   "财务/收银": () => ["dashboard", "orders", "consume", "reports", "data"]
 };
 
@@ -20,6 +20,7 @@ const authFormModules = {
   batchScheduleForm: "schedule",
   scheduleAdjustForm: "schedule",
   attendanceForm: "schedule",
+  feedbackForm: "feedback",
   leaveRequestForm: "leaves",
   leaveMakeupForm: "leaves",
   followUpForm: "followUp",
@@ -36,6 +37,7 @@ const authClickPolicies = [
   ["[data-student-order], [data-pay-order], [data-finance-adjust]", "orders", "订单/收款"],
   ["[data-student-class]", "classes", "分班"],
   ["[data-finish-lesson], [data-schedule-adjust]", "schedule", "排课/上课"],
+  ["[data-feedback-lesson]", "feedback", "课后反馈"],
   ["[data-schedule-leave], [data-leave-approve], [data-leave-reject], [data-leave-makeup], [data-leave-complete]", "leaves", "请假补课"],
   ["[data-export], #backupData, #restoreData, #resetDemo", "data", "数据导入导出"]
 ];
@@ -325,7 +327,7 @@ if (typeof renderDataCenter === "function") {
     const metricValue = [...appContent.querySelectorAll(".metric")]
       .find((item) => item.textContent.includes("数据表数量"))
       ?.querySelector("strong");
-    if (metricValue) metricValue.textContent = "23";
+    if (metricValue) metricValue.textContent = "24";
 
     const dataGrid = appContent.querySelector(".data-grid");
     if (!dataGrid || dataGrid.querySelector('[data-export="auditLogs"]')) return;

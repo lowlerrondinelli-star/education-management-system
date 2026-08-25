@@ -48,9 +48,34 @@ teacherDeskStyle.textContent = `
     flex-wrap: wrap;
   }
 
+  .teacher-filter-bar {
+    margin-top: 12px;
+  }
+
+  .teacher-filter-bar label {
+    display: grid;
+    gap: 5px;
+    color: var(--muted);
+    font-size: 12px;
+    min-width: 150px;
+  }
+
+  .teacher-filter-bar select {
+    color: var(--ink);
+    min-width: 0;
+  }
+
   @media (max-width: 1080px) {
     .teacher-layout {
       grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 650px) {
+    .teacher-filter-bar,
+    .teacher-filter-bar label,
+    .teacher-filter-bar select {
+      width: 100%;
     }
   }
 `;
@@ -58,6 +83,9 @@ document.head.appendChild(teacherDeskStyle);
 
 navItems.splice(1, 0, { id: "teacherDesk", label: "老师工作台", icon: "师" });
 viewMeta.teacherDesk = ["老师工作台", "我的课与学生"];
+
+let teacherDeskScopeMode = "";
+let teacherDeskTeacherFilter = "";
 
 function ensureTeacherDeskPermissions() {
   if (Array.isArray(roleModules) && !roleModules.some(([id]) => id === "teacherDesk")) {
@@ -78,18 +106,49 @@ function currentTeacherEmployee() {
   return null;
 }
 
-function teacherDeskName() {
+function teacherDeskRoleNames() {
+  if (typeof authRoleNames === "function") return authRoleNames();
   const employee = currentTeacherEmployee();
-  if (employee?.name) return employee.name;
-  return appState.teachers?.[0]?.name || appState.lessons[0]?.teacher || "";
+  return text(employee?.roles)
+    .split(/[、,，]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function teacherDeskCanViewAll() {
+  return teacherDeskRoleNames().some((role) => ["校长/管理员", "教务/学管师"].includes(role));
+}
+
+function teacherDeskDefaultScope() {
+  return teacherDeskCanViewAll() ? "all" : "mine";
+}
+
+function teacherDeskScope() {
+  return teacherDeskScopeMode || teacherDeskDefaultScope();
+}
+
+function teacherDeskTeacherNames() {
+  const names = [
+    ...(appState.teachers || []).map((teacher) => teacher.name),
+    ...(appState.employees || []).filter((employee) => employee.isTeacher === "是" || text(employee.roles).includes("教师")).map((employee) => employee.name),
+    ...appState.lessons.map((lesson) => lesson.teacher)
+  ];
+  return [...new Set(names.filter(Boolean))].sort((a, b) => text(a).localeCompare(text(b), "zh-CN"));
+}
+
+function teacherDeskSelectedTeacher() {
+  const employee = currentTeacherEmployee();
+  if (teacherDeskScope() === "mine") return employee?.name || teacherDeskTeacherNames()[0] || "";
+  if (teacherDeskScope() === "teacher") return teacherDeskTeacherFilter || teacherDeskTeacherNames()[0] || "";
+  return "";
 }
 
 function teacherDeskIsPersonal() {
-  return Boolean(currentTeacherEmployee());
+  return teacherDeskScope() !== "all";
 }
 
 function teacherDeskLessons() {
-  const teacherName = teacherDeskName();
+  const teacherName = teacherDeskSelectedTeacher();
   const lessons = appState.lessons.filter((lesson) => (teacherDeskIsPersonal() ? lesson.teacher === teacherName : true));
   return lessons.sort(compareLessonTime);
 }
@@ -125,6 +184,31 @@ function teacherDeskStats() {
   const pendingAttendance = pendingLessons.filter((lesson) => !lessonHasAttendance(lesson));
   const pendingFeedback = lessons.filter((lesson) => lesson.status === "已上课" && !lessonHasSentFeedback(lesson));
   return { lessons, pendingLessons, todayLessons, pendingAttendance, pendingFeedback, students: teacherDeskStudents() };
+}
+
+function renderTeacherDeskFilters() {
+  const scope = teacherDeskScope();
+  const selectedTeacher = teacherDeskSelectedTeacher();
+  const canViewAll = teacherDeskCanViewAll();
+  const teacherOptions = teacherDeskTeacherNames()
+    .map((name) => `<option value="${escapeHtml(name)}" ${name === selectedTeacher ? "selected" : ""}>${escapeHtml(name)}</option>`)
+    .join("");
+
+  return `
+    <div class="filters teacher-filter-bar">
+      <label>查看范围
+        <select id="teacherDeskScope" aria-label="老师工作台查看范围">
+          <option value="all" ${scope === "all" ? "selected" : ""} ${canViewAll ? "" : "disabled"}>全校老师</option>
+          <option value="mine" ${scope === "mine" ? "selected" : ""}>我的课表</option>
+          <option value="teacher" ${scope === "teacher" ? "selected" : ""} ${canViewAll ? "" : "disabled"}>指定老师</option>
+        </select>
+      </label>
+      <label>指定老师
+        <select id="teacherDeskTeacherFilter" aria-label="选择老师" ${scope === "teacher" ? "" : "disabled"}>
+          ${teacherOptions}
+        </select>
+      </label>
+    </div>`;
 }
 
 function teacherDeskLessonCard(lesson, mode = "normal") {
@@ -168,11 +252,11 @@ function renderTeacherDesk() {
   if (typeof ensureAttendanceData === "function") ensureAttendanceData();
   if (typeof ensureFeedbackData === "function") ensureFeedbackData();
 
-  const teacherName = teacherDeskName();
   const stats = teacherDeskStats();
   const nextLessons = (stats.todayLessons.length ? stats.todayLessons : stats.pendingLessons).slice(0, 6);
   const doneLessons = stats.lessons.filter((lesson) => lesson.status === "已上课").slice(-5).reverse();
-  const displayName = teacherDeskIsPersonal() ? teacherName : "全校教师";
+  const selectedTeacher = teacherDeskSelectedTeacher();
+  const displayName = teacherDeskIsPersonal() ? selectedTeacher || "当前老师" : "全校教师";
 
   appContent.innerHTML = `
     <section class="dashboard-hero">
@@ -187,6 +271,7 @@ function renderTeacherDesk() {
         <button class="small-button" type="button" data-go="consume">课时流水</button>
       </div>
     </section>
+    ${renderTeacherDeskFilters()}
     <div class="summary-grid">
       <div class="metric"><span>待上课节</span><strong>${stats.pendingLessons.length}</strong><small>今日 ${stats.todayLessons.length} 节</small></div>
       <div class="metric"><span>待点名</span><strong>${stats.pendingAttendance.length}</strong><small>未保存考勤</small></div>
@@ -255,5 +340,24 @@ renderView = function renderViewWithTeacherDesk() {
   }
   baseRenderViewForTeacherDesk();
 };
+
+document.addEventListener("change", (event) => {
+  if (event.target.id === "authUserSelect") {
+    teacherDeskScopeMode = "";
+    teacherDeskTeacherFilter = "";
+  }
+
+  if (event.target.id === "teacherDeskScope") {
+    teacherDeskScopeMode = event.target.value;
+    if (teacherDeskScopeMode === "teacher" && !teacherDeskTeacherFilter) teacherDeskTeacherFilter = teacherDeskTeacherNames()[0] || "";
+    renderView();
+  }
+
+  if (event.target.id === "teacherDeskTeacherFilter") {
+    teacherDeskTeacherFilter = event.target.value;
+    teacherDeskScopeMode = "teacher";
+    renderView();
+  }
+});
 
 renderNav();

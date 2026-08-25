@@ -552,7 +552,7 @@ document.addEventListener("click", (event) => {
   if (approveButton) approveLeave(approveButton.dataset.leaveApprove);
 
   const rejectButton = event.target.closest("[data-leave-reject]");
-  if (rejectButton) rejectLeave(event.target.dataset.leaveReject);
+  if (rejectButton) rejectLeave(rejectButton.dataset.leaveReject);
 
   const makeupButton = event.target.closest("[data-leave-makeup]");
   if (makeupButton) renderLeaveMakeupDialog(makeupButton.dataset.leaveMakeup);

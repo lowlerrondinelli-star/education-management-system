@@ -1164,13 +1164,13 @@ function compareLessonTime(a, b) {
   return lessonDateTime(a) - lessonDateTime(b);
 }
 
-function dashboardTaskCard(title, detail, tone, action, goView) {
+function dashboardTaskCard(title, detail, tone, action, goView, actionHtml = "") {
   return `<div class="dashboard-task">
     <div>
       <strong>${tag(title, tone)}</strong>
       <span class="muted">${escapeHtml(detail)}</span>
     </div>
-    ${goView ? `<button class="small-button" type="button" data-go="${goView}">${escapeHtml(action)}</button>` : ""}
+    ${actionHtml || (goView ? `<button class="small-button" type="button" data-go="${goView}">${escapeHtml(action)}</button>` : "")}
   </div>`;
 }
 
@@ -1207,8 +1207,27 @@ function renderDashboard() {
     );
 
   const reminders = [
-    ...unpaidStudents.map((student) => ({ title: `${student.name} 有欠费`, detail: `${money(student.debt)}，跟进人：${student.owner}`, tone: "red", go: "orders", action: "处理订单" })),
-    ...lowBalanceStudents.map((student) => ({ title: `${student.name} 课时不足`, detail: `剩余 ${student.balance} 课时，建议提醒续费`, tone: "amber", go: "followUp", action: "去跟进" })),
+    ...unpaidStudents.map((student) => {
+      const debtOrder = appState.orders.find((order) => order.student === student.name && Number(order.debt || 0) > 0);
+      return {
+        title: `${student.name} 有欠费`,
+        detail: `${money(student.debt)}，跟进人：${student.owner}`,
+        tone: "red",
+        go: "orders",
+        action: "处理订单",
+        actionHtml: debtOrder
+          ? `<button class="small-button" type="button" data-pay-order="${escapeHtml(debtOrder.id)}">补缴</button>`
+          : `<button class="small-button" type="button" data-student-order="${escapeHtml(student.id)}">报名</button>`
+      };
+    }),
+    ...lowBalanceStudents.map((student) => ({
+      title: `${student.name} 课时不足`,
+      detail: `剩余 ${student.balance} 课时，建议提醒续费`,
+      tone: "amber",
+      go: "followUp",
+      action: "去跟进",
+      actionHtml: `<button class="small-button" type="button" data-student-follow="${escapeHtml(student.id)}">去跟进</button>`
+    })),
     ...(overdueLessons ? [{ title: `${overdueLessons} 节课未处理`, detail: "存在早于今天但仍为待上课的课节，请核对是否需要补点名。", tone: "red", go: "schedule", action: "看课表" }] : []),
     { title: "导入前校验", detail: "手机号、日期、课时、金额、字典值必须先检查", tone: "", go: "data", action: "去导入" }
   ]
@@ -1249,7 +1268,7 @@ function renderDashboard() {
       <section class="section">
         <div class="section-head"><h3>待办提醒</h3><span>${tag(`${reminders.length} 项`, reminders.length ? "amber" : "green")}</span></div>
         <div class="section-body stack-list">
-          ${reminders.map((item) => dashboardTaskCard(item.title, item.detail, item.tone, item.action, item.go)).join("") || `<div class="stack-item"><strong>暂无当前账号可处理提醒</strong><span class="muted">需要处理的教学事项会优先显示在上方统一待办。</span></div>`}
+          ${reminders.map((item) => dashboardTaskCard(item.title, item.detail, item.tone, item.action, item.go, item.actionHtml)).join("") || `<div class="stack-item"><strong>暂无当前账号可处理提醒</strong><span class="muted">需要处理的教学事项会优先显示在上方统一待办。</span></div>`}
         </div>
       </section>
     </div>`;

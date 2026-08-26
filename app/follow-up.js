@@ -248,6 +248,7 @@ function suggestedFollowUps() {
       tasks.push({
         id: `F-${followUpKey("欠费补缴", student.name)}`,
         key: followUpKey("欠费补缴", student.name),
+        studentId: student.id,
         student: student.name,
         phone: student.phone,
         type: "欠费补缴",
@@ -266,6 +267,7 @@ function suggestedFollowUps() {
       tasks.push({
         id: `F-${followUpKey("课时不足", student.name)}`,
         key: followUpKey("课时不足", student.name),
+        studentId: student.id,
         student: student.name,
         phone: student.phone,
         type: "课时不足",
@@ -284,6 +286,7 @@ function suggestedFollowUps() {
       tasks.push({
         id: `F-${followUpKey("意向回访", student.name)}`,
         key: followUpKey("意向回访", student.name),
+        studentId: student.id,
         student: student.name,
         phone: student.phone,
         type: "意向回访",

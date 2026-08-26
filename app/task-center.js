@@ -129,6 +129,10 @@ function taskCenterGoAction(view, label = "查看") {
   return `<button class="small-button" type="button" data-go="${escapeHtml(view)}">${escapeHtml(label)}</button>`;
 }
 
+function taskCenterStudentByName(name) {
+  return appState.students.find((student) => student.name === name);
+}
+
 function taskCenterFollowUpTasks() {
   if (typeof activeFollowUps !== "function") return [];
   return activeFollowUps().map((item) => ({
@@ -142,7 +146,9 @@ function taskCenterFollowUpTasks() {
     subtitle: item.phone || "",
     detail: item.note || item.result || "待联系",
     actions: [
-      taskCenterGoAction("followUp", "打开"),
+      item.studentId || taskCenterStudentByName(item.student)?.id
+        ? `<button class="small-button" type="button" data-student-follow="${escapeHtml(item.studentId || taskCenterStudentByName(item.student)?.id)}">打开</button>`
+        : taskCenterGoAction("followUp", "打开"),
       `<button class="small-button" type="button" data-follow-result="${escapeHtml(item.id)}" data-result="已联系">已联系</button>`,
       `<button class="small-button" type="button" data-follow-done="${escapeHtml(item.id)}">完成</button>`
     ].join("")
@@ -237,6 +243,7 @@ function taskCenterOrderTasks() {
     }
 
     if (remaining > 0 && remaining <= 3 && order.status !== "已作废") {
+      const student = taskCenterStudentByName(order.student);
       tasks.push({
         id: `renew:${order.id}`,
         module: "followUp",
@@ -248,7 +255,9 @@ function taskCenterOrderTasks() {
         subtitle: order.className || order.course || "",
         detail: `剩余 ${remaining} 课时 / 有效期 ${order.expireAt || "未设置"}`,
         actions: [
-          taskCenterGoAction("followUp", "跟进"),
+          student
+            ? `<button class="small-button" type="button" data-student-follow="${escapeHtml(student.id)}">跟进</button>`
+            : taskCenterGoAction("followUp", "跟进"),
           taskCenterGoAction("orders", "订单")
         ].join("")
       });

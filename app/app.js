@@ -494,7 +494,7 @@ function applyPaymentMethodAccount(form, methodFieldName = "payMethod") {
 }
 
 function paymentNoteOptions(selectedValue = "欠费补缴") {
-  return choiceOptions(["欠费补缴", "家长补齐尾款", "分期补缴", "线下收款已核对", "财务复核后入账", "其他收款备注"], selectedValue);
+  return choiceOptions(["欠费补缴", "家长补齐尾款", "分期补缴", "订金锁班补款", "线下收款已核对", "财务复核后入账", "其他收款备注"], selectedValue);
 }
 
 function financeReasonOptions(kind = "refund", selectedValue = "") {

@@ -180,6 +180,76 @@ function orderPackageOptions(courseName, selectedKey = "standard") {
     .join("");
 }
 
+function debtPaymentPresets(order) {
+  const debt = Number(order.debt || 0);
+  const half = Math.max(1, Math.round(debt / 2));
+  const deposit = Math.min(debt, Math.max(300, Math.round(debt * 0.3)));
+  return {
+    fullWechat: {
+      label: "全额补缴：微信",
+      amount: debt,
+      method: "微信",
+      note: "家长补齐尾款"
+    },
+    fullTransfer: {
+      label: "全额补缴：银行转账",
+      amount: debt,
+      method: "银行转账",
+      note: "家长补齐尾款"
+    },
+    halfWechat: {
+      label: `分期补缴：先收 ${money(Math.min(debt, half))}`,
+      amount: Math.min(debt, half),
+      method: "微信",
+      note: "分期补缴"
+    },
+    depositLock: {
+      label: `订金锁班：先收 ${money(deposit)}`,
+      amount: deposit,
+      method: "支付宝",
+      note: "订金锁班补款"
+    },
+    offlineReview: {
+      label: "线下已收：财务复核",
+      amount: debt,
+      method: "线下收款",
+      note: "财务复核后入账"
+    },
+    cashSmall: {
+      label: "现金补缴",
+      amount: debt,
+      method: "现金",
+      note: "欠费补缴"
+    }
+  };
+}
+
+function debtPaymentPresetOptions(order, selectedValue = "fullWechat") {
+  return Object.entries(debtPaymentPresets(order))
+    .map(([value, item]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function applyDebtPaymentPreset(form, order) {
+  if (!form || !order) return;
+  const preset = debtPaymentPresets(order)[form.elements.paymentPreset?.value];
+  if (!preset) return;
+  if (form.elements.amount) form.elements.amount.value = preset.amount;
+  if (form.elements.method) {
+    form.elements.method.innerHTML = typeof paymentMethodOptions === "function" ? paymentMethodOptions(preset.method) : `<option>${escapeHtml(preset.method)}</option>`;
+    form.elements.method.value = preset.method;
+  }
+  if (form.elements.account) {
+    const account = typeof paymentAccountForMethod === "function" ? paymentAccountForMethod(preset.method) : "校区收款账户";
+    form.elements.account.innerHTML = typeof paymentAccountOptions === "function" ? paymentAccountOptions(account) : `<option>${escapeHtml(account)}</option>`;
+    form.elements.account.value = account;
+  }
+  if (form.elements.note) {
+    form.elements.note.innerHTML = typeof paymentNoteOptions === "function" ? paymentNoteOptions(preset.note) : `<option>${escapeHtml(preset.note)}</option>`;
+    form.elements.note.value = preset.note;
+  }
+}
+
 function applyOrderPackagePreset() {
   const form = document.querySelector("#orderForm");
   if (!form) return;
@@ -311,8 +381,9 @@ function renderPaymentDialog(orderId) {
   const order = appState.orders.find((item) => item.id === orderId);
   if (!order) return;
   const debt = Number(order.debt || 0);
-  const defaultMethod = order.payMethod || "微信";
-  const defaultAccount = order.account || (typeof paymentAccountForMethod === "function" ? paymentAccountForMethod(defaultMethod) : "校区收款账户");
+  const defaultPreset = debtPaymentPresets(order).fullWechat;
+  const defaultMethod = defaultPreset.method;
+  const defaultAccount = typeof paymentAccountForMethod === "function" ? paymentAccountForMethod(defaultMethod) : "微信收款码";
   paymentDialogBody.innerHTML = `
     <form method="dialog" id="paymentForm" data-order-id="${escapeHtml(order.id)}">
       <div class="dialog-head">
@@ -324,12 +395,13 @@ function renderPaymentDialog(orderId) {
         <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
       </div>
       <div class="form-grid">
+        <label>收款场景模板<select name="paymentPreset">${debtPaymentPresetOptions(order, "fullWechat")}</select></label>
         <label>本次收款<input name="amount" type="number" min="1" max="${debt}" step="1" value="${debt}" required /></label>
         <label>收款方式<select name="method">${typeof paymentMethodOptions === "function" ? paymentMethodOptions(defaultMethod) : "<option>微信</option><option>支付宝</option><option>银行转账</option><option>现金</option><option>线下收款</option>"}</select></label>
         <label>收款账户<select name="account">${typeof paymentAccountOptions === "function" ? paymentAccountOptions(defaultAccount) : `<option>${escapeHtml(defaultAccount)}</option>`}</select></label>
         <label>支付单号<input name="tradeNo" value="${escapeHtml(order.tradeNo || "")}" /></label>
         <label>经办人<select name="operator">${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions(order.owner || "前台老师") : `<option>${escapeHtml(order.owner || "前台老师")}</option>`}</select></label>
-        <label>备注<select name="note">${typeof paymentNoteOptions === "function" ? paymentNoteOptions("欠费补缴") : "<option>欠费补缴</option>"}</select></label>
+        <label>备注<select name="note">${typeof paymentNoteOptions === "function" ? paymentNoteOptions(defaultPreset.note) : `<option>${escapeHtml(defaultPreset.note)}</option>`}</select></label>
       </div>
       <div class="dialog-actions">
         <span class="muted">保存后会同步减少订单欠费和学员欠费。</span>
@@ -453,6 +525,11 @@ document.addEventListener("change", (event) => {
 
   if (event.target.name === "method" && event.target.closest("#paymentForm")) {
     applyPaymentMethodAccount(event.target.form, "method");
+  }
+
+  if (event.target.name === "paymentPreset" && event.target.closest("#paymentForm")) {
+    const order = appState.orders.find((item) => item.id === event.target.form.dataset.orderId);
+    applyDebtPaymentPreset(event.target.form, order);
   }
 });
 

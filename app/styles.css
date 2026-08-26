@@ -664,6 +664,18 @@ tr:hover td {
   align-items: center;
 }
 
+.data-preview-summary {
+  margin-bottom: 12px;
+}
+
+.data-field-grid {
+  margin-bottom: 12px;
+}
+
+.data-field-card {
+  min-height: 118px;
+}
+
 .data-preview-toolbar input {
   min-width: min(320px, 100%);
 }

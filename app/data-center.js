@@ -429,6 +429,51 @@ function dataPreviewRows(type, config, columns) {
     });
 }
 
+function dataFieldCompleteness(config, columns) {
+  const totalRows = config.rows.length;
+  return columns
+    .map((column) => {
+      const filled = config.rows.filter((row) => rowValue(row, column.key)).length;
+      const missing = totalRows - filled;
+      const percent = totalRows ? Math.round((filled / totalRows) * 100) : 100;
+      return { ...column, filled, missing, percent };
+    })
+    .sort((left, right) => right.missing - left.missing || left.label.localeCompare(right.label, "zh-CN"));
+}
+
+function dataCompletenessPercent(fields) {
+  const totalCells = fields.reduce((sum, field) => sum + field.filled + field.missing, 0);
+  const filledCells = fields.reduce((sum, field) => sum + field.filled, 0);
+  return totalCells ? Math.round((filledCells / totalCells) * 100) : 100;
+}
+
+function renderDataPreviewSummary(config, columns, rows, issueCount) {
+  const fields = dataFieldCompleteness(config, columns);
+  const completeness = dataCompletenessPercent(fields);
+  const fieldCards = fields
+    .filter((field) => field.missing > 0)
+    .slice(0, 6)
+    .map((field) => {
+      const tone = field.percent >= 90 ? "green" : field.percent >= 70 ? "amber" : "red";
+      return `<div class="quality-card data-field-card">
+        <strong>${escapeHtml(field.label)}</strong>
+        <span>${tag(`完整度 ${field.percent}%`, tone)}</span>
+        <span class="muted">${field.filled}/${config.rows.length} 行已填写，缺 ${field.missing} 行</span>
+      </div>`;
+    });
+
+  return `
+    <div class="summary-grid compact-metrics data-preview-summary">
+      <div class="metric"><span>当前显示</span><strong>${rows.length}</strong><small>全部 ${config.rows.length} 行</small></div>
+      <div class="metric"><span>字段数量</span><strong>${columns.length}</strong><small>${config.file.replace(/\.csv$/, "")}</small></div>
+      <div class="metric"><span>风险行</span><strong>${issueCount}</strong><small>${dataPreviewOnlyIssues ? "正在只看需处理" : "可一键筛选"}</small></div>
+      <div class="metric"><span>字段完整度</span><strong>${completeness}%</strong><small>${fields.filter((field) => field.missing > 0).length || "无"} 个字段有缺失</small></div>
+    </div>
+    <div class="quality-grid data-field-grid">
+      ${fieldCards.join("") || `<div class="stack-item"><strong>字段填写完整</strong><span class="muted">当前数据表的预览字段都有内容。</span></div>`}
+    </div>`;
+}
+
 function renderDataPreviewPanel(configs) {
   if (!configs[dataPreviewType]) dataPreviewType = Object.keys(configs)[0] || "students";
   const config = configs[dataPreviewType];
@@ -451,6 +496,7 @@ function renderDataPreviewPanel(configs) {
         <span>${tag(`${rows.length}/${config.rows.length} 行`, issueCount ? "amber" : "green")}</span>
       </div>
       <div class="section-body">
+        ${renderDataPreviewSummary(config, columns, rows, issueCount)}
         <div class="filters data-preview-toolbar">
           <select id="dataPreviewType" aria-label="选择数据表">
             ${Object.entries(configs)

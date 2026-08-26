@@ -143,6 +143,78 @@ function courseOptions(selectedName = "") {
     .join("");
 }
 
+function choiceOptions(values, selectedValue = "") {
+  const normalized = values.map((item) => text(item).trim()).filter(Boolean);
+  if (selectedValue && !normalized.includes(selectedValue)) normalized.unshift(selectedValue);
+  return [...new Set(normalized)]
+    .map((value) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(value)}</option>`)
+    .join("");
+}
+
+function gradeChoiceOptions(selectedValue = "初二年级") {
+  return choiceOptions(
+    [
+      "一年级",
+      "二年级",
+      "三年级",
+      "四年级",
+      "五年级",
+      "六年级",
+      "初一年级",
+      "初二年级",
+      "初三年级",
+      "高一年级",
+      "高二年级",
+      "高三年级",
+      ...(appState.students || []).map((item) => item.grade),
+      ...(appState.courses || []).map((item) => item.grade),
+      ...(appState.leads || []).map((item) => item.grade)
+    ],
+    selectedValue
+  );
+}
+
+function channelChoiceOptions(selectedValue = "转介绍") {
+  return choiceOptions(
+    [
+      "转介绍",
+      "入学测评",
+      "抖音直连",
+      "小红书直连",
+      "招生表单",
+      "老师介绍",
+      "到店咨询",
+      ...(appState.students || []).map((item) => item.channel),
+      ...(appState.leads || []).map((item) => item.channel)
+    ],
+    selectedValue
+  );
+}
+
+function ownerChoiceOptions(selectedValue = "前台老师") {
+  return choiceOptions(
+    [
+      "前台老师",
+      ...(appState.employees || []).map((item) => item.name),
+      ...(appState.teachers || []).map((item) => item.name),
+      ...(appState.students || []).map((item) => item.owner),
+      ...(appState.leads || []).map((item) => item.owner)
+    ],
+    selectedValue
+  );
+}
+
+function refreshStudentFormChoices() {
+  const gradeSelect = document.querySelector("#studentGradeSelect");
+  const channelSelect = document.querySelector("#studentChannelSelect");
+  const ownerSelect = document.querySelector("#studentOwnerSelect");
+  const courseSelect = document.querySelector("#studentCourseSelect");
+  if (gradeSelect) gradeSelect.innerHTML = gradeChoiceOptions(gradeSelect.value || "初二年级");
+  if (channelSelect) channelSelect.innerHTML = channelChoiceOptions(channelSelect.value || "转介绍");
+  if (ownerSelect) ownerSelect.innerHTML = ownerChoiceOptions(ownerSelect.value || "前台老师");
+  if (courseSelect) courseSelect.innerHTML = courseOptions(courseSelect.value || "初二小组课/一对一");
+}
+
 function getClass(name) {
   return appState.classes.find((item) => item.name === name);
 }
@@ -921,6 +993,7 @@ document.addEventListener("click", (event) => {
   }
 
   if (event.target.id === "newStudentInline" || event.target.id === "newStudentBtn") {
+    refreshStudentFormChoices();
     studentDialog.showModal();
   }
 

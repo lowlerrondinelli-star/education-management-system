@@ -219,11 +219,11 @@ function renderLeadForm() {
         <label>学员姓名<input name="name" required /></label>
         <label>手机号<input name="phone" required maxlength="11" /></label>
         <label>手机号归属<select name="relation"><option>母亲</option><option>父亲</option><option>本人</option><option>其他</option></select></label>
-        <label>年级<input name="grade" value="初一年级" required /></label>
+        <label>年级<select name="grade" required>${typeof gradeChoiceOptions === "function" ? gradeChoiceOptions("初一年级") : "<option>初一年级</option>"}</select></label>
         <label>学校<input name="school" placeholder="可选" /></label>
         <label>来源渠道<select name="channel">${leadSources.map((item) => `<option>${escapeHtml(item)}</option>`).join("")}</select></label>
-        <label>负责人<input name="owner" value="前台老师" required /></label>
-        <label>意向课程<input name="course" value="数学同步课" required /></label>
+        <label>负责人<select name="owner" required>${typeof ownerChoiceOptions === "function" ? ownerChoiceOptions("前台老师") : "<option>前台老师</option>"}</select></label>
+        <label>意向课程<select name="course" required>${typeof courseOptions === "function" ? courseOptions("初二小组课/一对一") : "<option>数学同步课</option>"}</select></label>
         <label>意向度<select name="intention">${leadIntentions.map((item) => `<option>${escapeHtml(item)}</option>`).join("")}</select></label>
         <label>下次跟进<input name="nextFollowUp" type="date" value="${leadDateOffset(1)}" required /></label>
       </div>

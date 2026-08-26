@@ -5,6 +5,7 @@ const cleanUiPanelMeta = {
   classForm: { label: "新增班级", hint: "创建可报名和排课的班级" },
   assignForm: { label: "快速分班", hint: "把学员放入目标班级" },
   lessonForm: { label: "新增排课", hint: "新增单节班课或 1 对 1" },
+  batchScheduleForm: { label: "周期排课", hint: "按星期批量生成课表" },
   leaveRequestForm: { label: "登记请假", hint: "处理请假和补课建议" },
   courseForm: { label: "新增课程", hint: "维护报价和课程口径" },
   teacherForm: { label: "新增教师", hint: "维护教师科目和容量" },
@@ -31,8 +32,13 @@ function cleanUiPanelKey(panel, index) {
 }
 
 function cleanUiPanelsInBody(body) {
-  const directPanels = [...body.children].filter((child) => child.matches?.(".operation-panel, form.master-card"));
-  const nestedPanels = [...body.querySelectorAll(":scope > .master-grid > form.master-card")];
+  const directPanels = [...body.children].filter((child) => child.matches?.(".operation-panel, form.master-card, form.schedule-batch"));
+  const nestedPanels = [
+    ...body.querySelectorAll(":scope > .master-grid > form.master-card"),
+    ...body.querySelectorAll(":scope > .lead-layout > form.master-card"),
+    ...body.querySelectorAll(":scope > .follow-layout > form.master-card"),
+    ...body.querySelectorAll(":scope > .staff-layout > form.master-card")
+  ];
   return [...new Set([...directPanels, ...nestedPanels])];
 }
 

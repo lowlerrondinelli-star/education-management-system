@@ -181,6 +181,47 @@ function applyFollowUpScenario(form, scenario) {
   if (form.elements.note) form.elements.note.innerHTML = typeof followUpNoteOptions === "function" ? followUpNoteOptions(preset.note) : `<option>${escapeHtml(preset.note)}</option>`;
 }
 
+function followUpRecommendedScenario(student) {
+  if (!student) return "missedCall";
+  const debt = studentDebt(student);
+  if (debt > 0) return "debtToday";
+  const balance = Number(student.balance || 0);
+  if (balance > 0 && balance <= 3) return "lowBalanceRenewal";
+  if (student.status === "意向") return "intentTrial";
+  return "missedCall";
+}
+
+function followUpRecommendedNote(student, scenario) {
+  if (!student) return followUpScenarioPresets()[scenario]?.note || "";
+  if (scenario === "debtToday") return `当前欠费 ${money(studentDebt(student))}，建议当天联系补缴。`;
+  if (scenario === "lowBalanceRenewal") return `剩余 ${student.balance || 0} 课时，建议安排续费沟通。`;
+  if (scenario === "intentTrial") return `意向课程：${student.course || "待确认"}，建议确认试听或报名时间。`;
+  return followUpScenarioPresets()[scenario]?.note || "家长暂未回复，明天继续联系";
+}
+
+function syncFollowUpStudentScenario(form) {
+  const student = appState.students.find((item) => item.id === form?.elements?.studentId?.value);
+  if (!form || !student) return;
+  const scenario = followUpRecommendedScenario(student);
+  if (form.elements.scenario) {
+    form.elements.scenario.innerHTML = followUpScenarioOptions(scenario);
+    form.elements.scenario.value = scenario;
+  }
+  applyFollowUpScenario(form, scenario);
+
+  const preset = followUpScenarioPresets()[scenario] || followUpScenarioPresets().missedCall;
+  const owner = student.owner || preset.owner;
+  if (form.elements.owner) {
+    form.elements.owner.innerHTML = typeof operatorChoiceOptions === "function" ? operatorChoiceOptions(owner) : `<option>${escapeHtml(owner)}</option>`;
+    form.elements.owner.value = owner;
+  }
+  if (form.elements.note) {
+    const note = followUpRecommendedNote(student, scenario);
+    form.elements.note.innerHTML = typeof followUpNoteOptions === "function" ? followUpNoteOptions(note) : `<option>${escapeHtml(note)}</option>`;
+    form.elements.note.value = note;
+  }
+}
+
 function followUpKey(type, studentName) {
   return `${type}:${studentName}`;
 }
@@ -366,21 +407,26 @@ function renderFollowUpCards(items) {
 }
 
 function renderFollowUpForm() {
-  const defaults = followUpScenarioPresets().debtToday;
+  const defaultStudent = appState.students[0];
+  const defaultScenario = followUpRecommendedScenario(defaultStudent);
+  const defaults = followUpScenarioPresets()[defaultScenario] || followUpScenarioPresets().missedCall;
+  const defaultDueDate = followUpDueDatePresets()[defaults.duePreset]?.date || todayText();
+  const defaultNote = followUpRecommendedNote(defaultStudent, defaultScenario);
+  const defaultOwner = defaultStudent?.owner || defaults.owner;
   return `
     <form class="master-card" id="followUpForm">
       <h4>新增跟进</h4>
       <div class="operation-grid compact">
-        <label>跟进场景模板<select name="scenario">${followUpScenarioOptions("debtToday")}</select></label>
-        <label>学员<select name="studentId" required>${studentOptions(appState.students[0]?.id || "")}</select></label>
+        <label>跟进场景模板<select name="scenario">${followUpScenarioOptions(defaultScenario)}</select></label>
+        <label>学员<select name="studentId" required>${studentOptions(defaultStudent?.id || "")}</select></label>
         <label>跟进类型<select name="type">${followUpTypeOptions(defaults.type)}</select></label>
-        <label>跟进人<select name="owner" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions(defaults.owner) : `<option>${escapeHtml(defaults.owner)}</option>`}</select></label>
+        <label>跟进人<select name="owner" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions(defaultOwner) : `<option>${escapeHtml(defaultOwner)}</option>`}</select></label>
         <label>跟进日期模板<select name="duePreset">${followUpDueDateOptions(defaults.duePreset)}</select></label>
-        <label>下次跟进<input name="dueDate" type="date" value="${todayText()}" required /></label>
+        <label>下次跟进<input name="dueDate" type="date" value="${defaultDueDate}" required /></label>
         <label>跟进结果<select name="result">${followUpResultOptions(defaults.result)}</select></label>
         <label>优先级<select name="priority">${followUpPriorityOptions(defaults.priority)}</select></label>
       </div>
-      <label class="stack-item">备注<select name="note">${typeof followUpNoteOptions === "function" ? followUpNoteOptions(defaults.note) : `<option>${escapeHtml(defaults.note)}</option>`}</select></label>
+      <label class="stack-item">备注<select name="note">${typeof followUpNoteOptions === "function" ? followUpNoteOptions(defaultNote) : `<option>${escapeHtml(defaultNote)}</option>`}</select></label>
       <button class="primary-action" type="submit">保存跟进</button>
     </form>`;
 }
@@ -462,6 +508,10 @@ document.addEventListener("click", (event) => {
 document.addEventListener("change", (event) => {
   if (event.target.name === "scenario" && event.target.closest("#followUpForm")) {
     applyFollowUpScenario(event.target.form, event.target.value);
+  }
+
+  if (event.target.name === "studentId" && event.target.closest("#followUpForm")) {
+    syncFollowUpStudentScenario(event.target.form);
   }
 
   if (event.target.name === "duePreset" && event.target.closest("#followUpForm")) {

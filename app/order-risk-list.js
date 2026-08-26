@@ -28,6 +28,17 @@ orderRiskStyle.textContent = `
     max-width: 260px;
   }
 
+  .order-risk-advice {
+    display: grid;
+    gap: 4px;
+    min-width: 150px;
+    max-width: 230px;
+  }
+
+  .order-risk-advice .muted {
+    overflow-wrap: anywhere;
+  }
+
   @media (max-width: 650px) {
     .order-risk-toolbar,
     .order-risk-toolbar label,
@@ -103,6 +114,44 @@ function orderRiskTags(order) {
   const reasons = orderRiskReasons(order);
   if (!reasons.length) return tag("正常", "green");
   return `<div class="order-risk-tags">${reasons.map((reason) => tag(reason.label, reason.tone)).join("")}</div>`;
+}
+
+function orderRiskAdvice(order) {
+  const debt = Number(order.debt || 0);
+  const remaining = orderHoursRemaining(order);
+  const expireDays = daysUntilOrderExpire(order);
+  const voided = order.status === "已作废";
+  let title = "持续观察";
+  let detail = "订单状态正常，按课表继续消课。";
+  let tone = "green";
+
+  if (voided) {
+    title = "财务复核";
+    detail = "订单已作废，只保留核对和导出。";
+    tone = "red";
+  } else if (debt > 0) {
+    title = "优先补缴";
+    detail = `待收 ${money(debt)}，建议当天联系家长确认。`;
+    tone = "red";
+  } else if (remaining > 0 && remaining <= 3) {
+    title = "续费沟通";
+    detail = `剩余 ${remaining} 课时，先约续费或调整课包。`;
+    tone = "amber";
+  } else if (expireDays < 0) {
+    title = "有效期处理";
+    detail = `已过期 ${Math.abs(expireDays)} 天，需确认停课、延期或作废。`;
+    tone = "red";
+  } else if (expireDays <= 30) {
+    title = "到期提醒";
+    detail = `${expireDays} 天后到期，提前提醒家长。`;
+    tone = "amber";
+  } else if (!order.student || !order.className || !order.course) {
+    title = "资料核对";
+    detail = "补齐学员、课程或班级信息后再处理。";
+    tone = "red";
+  }
+
+  return `<div class="order-risk-advice">${tag(title, tone)}<span class="muted">${escapeHtml(detail)}</span></div>`;
 }
 
 function orderUniqueOptions(rows, key, selectedValue, allLabel) {
@@ -181,6 +230,7 @@ function renderOrderRiskRows(orders) {
       <td>${debt ? tag(money(debt), "red") : tag("无", "green")}</td>
       <td>${escapeHtml(order.expireAt)}<br><span class="muted">${Number.isFinite(daysUntilOrderExpire(order)) ? `${daysUntilOrderExpire(order)} 天` : "-"}</span></td>
       <td>${orderRiskTags(order)}</td>
+      <td>${orderRiskAdvice(order)}</td>
       <td>
         <div class="order-risk-actions">
           <button class="small-button" type="button" data-pay-order="${escapeHtml(order.id)}" ${debt <= 0 || voided ? "disabled" : ""}>补缴</button>
@@ -208,7 +258,7 @@ function appendOrderRiskPanel() {
       <div class="section-body">
         ${orderRiskSummary(visibleOrders)}
         ${renderOrderRiskToolbar()}
-        ${table(["学员/订单", "课程班级", "购买课时", "余额", "实收", "欠费", "有效期", "待处理", "操作"], renderOrderRiskRows(visibleOrders))}
+        ${table(["学员/订单", "课程班级", "购买课时", "余额", "实收", "欠费", "有效期", "待处理", "建议", "操作"], renderOrderRiskRows(visibleOrders))}
       </div>
     </section>`
   );

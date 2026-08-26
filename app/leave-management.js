@@ -124,12 +124,12 @@ function renderLeaveQuickForm() {
         <label>学员<select name="studentId" required>${leaveStudentOptions()}</select></label>
         <label>关联课节<select name="lessonId" required>${leaveLessonOptions()}</select></label>
         <label>请假类型<select name="leaveType"><option>事假</option><option>病假</option><option>迟到转请假</option><option>其他</option></select></label>
-        <label>申请人<input name="contact" value="家长" required /></label>
-        <label>处理人<input name="operator" value="前台老师" required /></label>
+        <label>申请人<select name="contact" required>${typeof leaveContactOptions === "function" ? leaveContactOptions("家长") : "<option>家长</option>"}</select></label>
+        <label>处理人<select name="operator" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions("前台老师") : "<option>前台老师</option>"}</select></label>
         <label>补课建议<select name="makeupPlan"><option>需要补课</option><option>不需要补课</option><option>待家长确认</option></select></label>
       </div>
       <div class="form-grid" style="grid-template-columns:1fr;margin:0">
-        <label>原因备注<input name="reason" value="家长请假，需后续安排补课" required /></label>
+        <label>原因备注<select name="reason" required>${typeof leaveReasonOptions === "function" ? leaveReasonOptions("家长请假，需后续安排补课") : "<option>家长请假，需后续安排补课</option>"}</select></label>
       </div>
       <div class="dialog-actions">
         <span class="muted">审批通过后会同步考勤状态为请假，不产生消课。</span>
@@ -309,7 +309,7 @@ function renderLeaveMakeupDialog(id) {
         <label>结束时间<input name="endTime" type="time" value="${escapeHtml(time.end)}" required /></label>
         <label>上课教师<select name="teacher" required>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(item.teacher || sourceLesson.teacher || "前台老师") : `<option>${escapeHtml(item.teacher || sourceLesson.teacher || "前台老师")}</option>`}</select></label>
         <label>上课教室<select name="room" required>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(item.room || sourceLesson.room || "试听教室") : `<option>${escapeHtml(item.room || sourceLesson.room || "试听教室")}</option>`}</select></label>
-        <label>操作人<input name="operator" value="${escapeHtml(item.operator || "前台老师")}" required /></label>
+        <label>操作人<select name="operator" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions(item.operator || "前台老师") : `<option>${escapeHtml(item.operator || "前台老师")}</option>`}</select></label>
       </div>
       <div class="dialog-actions">
         <span class="muted">会生成一节 1 对 1 补课课节，后续可正常点名和确认上课。</span>
@@ -450,12 +450,12 @@ function renderScheduleLeaveDialog(lessonId) {
       <div class="form-grid">
         <label>请假学员<select name="studentId" required>${students.map((student) => `<option value="${escapeHtml(student.id)}">${escapeHtml(student.name)}（余额 ${escapeHtml(student.balance)}）</option>`).join("")}</select></label>
         <label>请假类型<select name="leaveType"><option>事假</option><option>病假</option><option>迟到转请假</option><option>其他</option></select></label>
-        <label>申请人<input name="contact" value="家长" required /></label>
-        <label>处理人<input name="operator" value="前台老师" required /></label>
+        <label>申请人<select name="contact" required>${typeof leaveContactOptions === "function" ? leaveContactOptions("家长") : "<option>家长</option>"}</select></label>
+        <label>处理人<select name="operator" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions("前台老师") : "<option>前台老师</option>"}</select></label>
         <label>补课建议<select name="makeupPlan"><option>需要补课</option><option>不需要补课</option><option>待家长确认</option></select></label>
       </div>
       <div class="form-grid" style="grid-template-columns:1fr;">
-        <label>原因备注<input name="reason" value="家长请假，需后续安排补课" required /></label>
+        <label>原因备注<select name="reason" required>${typeof leaveReasonOptions === "function" ? leaveReasonOptions("家长请假，需后续安排补课") : "<option>家长请假，需后续安排补课</option>"}</select></label>
       </div>
       <div class="dialog-actions">
         <span class="muted">保存后可到“请假补课”页面审批。</span>

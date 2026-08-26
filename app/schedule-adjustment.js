@@ -129,10 +129,10 @@ function renderScheduleAdjustmentDialog(kind, lessonId) {
         <label>结束时间<input name="endTime" type="time" value="${escapeHtml(time.end)}" ${isCancel ? "disabled" : "required"} /></label>
         <label>上课教师<select name="teacher" ${isCancel ? "disabled" : "required"}>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(lesson.teacher) : `<option>${escapeHtml(lesson.teacher)}</option>`}</select></label>
         <label>上课教室<select name="room" ${isCancel ? "disabled" : "required"}>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(lesson.room) : `<option>${escapeHtml(lesson.room)}</option>`}</select></label>
-        <label>操作人<input name="operator" value="前台老师" required /></label>
+        <label>操作人<select name="operator" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions("前台老师") : "<option>前台老师</option>"}</select></label>
       </div>
       <div class="form-grid" style="grid-template-columns:1fr;">
-        <label>原因/备注<input name="reason" value="${isCancel ? "学生请假或老师临时调整" : "临时调整"}" required /></label>
+        <label>原因/备注<select name="reason" required>${typeof scheduleReasonOptions === "function" ? scheduleReasonOptions(kind, isCancel ? "学生请假或老师临时调整" : "") : `<option>${escapeHtml(isCancel ? "学生请假或老师临时调整" : "临时调整")}</option>`}</select></label>
       </div>
       <div class="dialog-actions"><span class="muted">${escapeHtml(help)}</span><button value="cancel" type="submit">取消</button><button class="primary-action" value="default" type="submit">保存</button></div>
     </form>`;

@@ -204,6 +204,62 @@ function ownerChoiceOptions(selectedValue = "前台老师") {
   );
 }
 
+function operatorChoiceOptions(selectedValue = "前台老师") {
+  return choiceOptions(
+    [
+      "前台老师",
+      "教务老师",
+      "校区校长",
+      "财务老师",
+      ...(appState.employees || []).map((item) => item.name),
+      ...(appState.teachers || []).map((item) => item.name),
+      ...(appState.students || []).map((item) => item.owner),
+      ...(appState.leads || []).map((item) => item.owner)
+    ],
+    selectedValue
+  );
+}
+
+function leaveContactOptions(selectedValue = "家长") {
+  return choiceOptions(["家长", "妈妈", "爸爸", "学生本人", "老师代登记", "前台代登记"], selectedValue);
+}
+
+function leaveReasonOptions(selectedValue = "家长请假，需后续安排补课") {
+  return choiceOptions(
+    [
+      "家长请假，需后续安排补课",
+      "学生生病，需请假补课",
+      "学校活动冲突，需改期补课",
+      "临时家庭安排，待家长确认补课时间",
+      "交通/天气原因无法到课",
+      "迟到转请假，本节不消课",
+      "其他原因，线下备注"
+    ],
+    selectedValue
+  );
+}
+
+function scheduleReasonOptions(kind = "reschedule", selectedValue = "") {
+  const defaults = {
+    reschedule: "临时调整",
+    cancel: "学生请假或老师临时调整",
+    makeup: "安排补课"
+  };
+  return choiceOptions(
+    [
+      defaults[kind] || defaults.reschedule,
+      "学生请假或老师临时调整",
+      "老师时间冲突，调整课节",
+      "教室冲突，调整上课地点",
+      "家长要求改期",
+      "节假日/校区活动调整",
+      "补课安排",
+      "其他原因，线下备注"
+    ],
+    selectedValue || defaults[kind] || defaults.reschedule
+  );
+}
+
 function subjectChoiceOptions(selectedValue = "数学") {
   return choiceOptions(
     [

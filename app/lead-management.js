@@ -76,6 +76,92 @@ function applyLeadDatePreset(form, presetName, inputName, presets) {
   if (form.elements[inputName]) form.elements[inputName].value = preset.date;
 }
 
+function leadTrialPlanPresets(lead) {
+  const subject = leadTrialSubjectValue(lead);
+  const teacher = leadTrialTeacherValue(lead, subject);
+  const room = leadTrialRoomValue(lead, subject);
+  const onlineRoom = (appState.rooms || []).find((item) => item.name === "线上课程")?.name || room;
+  return {
+    tomorrowEvening: {
+      label: "明晚标准试听",
+      datePreset: "tomorrow",
+      timeSlot: "18:30-19:30",
+      subject,
+      teacher,
+      room,
+      note: "招生试听课，试听后回访报名意向",
+      hint: "适合高意向家长：明晚试听，课后当天回访报名意向。"
+    },
+    saturdayMorning: {
+      label: "周六上午测评试听",
+      datePreset: "saturday",
+      timeSlot: "08:30-10:00",
+      subject,
+      teacher,
+      room,
+      note: "试听后安排学习测评和分班建议",
+      hint: "适合周中没时间的家庭：周六上午试听，同时做学习测评。"
+    },
+    weekendAfternoon: {
+      label: "周末下午家长旁听",
+      datePreset: "saturday",
+      timeSlot: "15:10-16:40",
+      subject,
+      teacher,
+      room,
+      note: "试听后确认适合班型和上课时间",
+      hint: "适合需要家长陪同的试听：周末下午到校，试听后确认班型和上课时间。"
+    },
+    onlineEvening: {
+      label: "线上晚间试听",
+      datePreset: "threeDays",
+      timeSlot: "18:30-19:30",
+      subject,
+      teacher,
+      room: onlineRoom,
+      note: "家长需试听后再决定是否报名",
+      hint: "适合线上咨询：三天后晚间线上试听，降低到店沟通成本。"
+    },
+    principalAssessment: {
+      label: "校长测评试听",
+      datePreset: "tomorrow",
+      timeSlot: "17:00-18:00",
+      subject,
+      teacher: "校长-奚老师",
+      room: "东楼201室-奚校长",
+      note: "试听后同步报价和优惠政策",
+      hint: "适合高客单或犹豫家长：校长先做测评试听，再同步报价政策。"
+    }
+  };
+}
+
+function leadTrialPlanOptions(lead, selectedValue = "tomorrowEvening") {
+  return Object.entries(leadTrialPlanPresets(lead))
+    .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function applyLeadTrialPlan(form) {
+  const lead = appState.leads.find((item) => item.id === form?.elements?.leadId?.value);
+  if (!form || !lead) return;
+  const plan = leadTrialPlanPresets(lead)[form.elements.trialPlan?.value] || leadTrialPlanPresets(lead).tomorrowEvening;
+  if (form.elements.trialDatePreset) {
+    form.elements.trialDatePreset.innerHTML = leadDatePresetOptions(leadTrialDatePresets(), plan.datePreset);
+    form.elements.trialDatePreset.value = plan.datePreset;
+    applyLeadDatePreset(form, "trialDatePreset", "date", leadTrialDatePresets());
+  }
+  if (form.elements.timeSlot) {
+    form.elements.timeSlot.value = plan.timeSlot;
+    if (typeof applyLessonTimeSlot === "function") applyLessonTimeSlot(form);
+  }
+  setChoiceField(form.elements.subject, plan.subject, typeof subjectChoiceOptions === "function" ? subjectChoiceOptions : null);
+  setChoiceField(form.elements.teacher, plan.teacher, typeof teacherChoiceOptions === "function" ? teacherChoiceOptions : null);
+  setChoiceField(form.elements.room, plan.room, typeof roomChoiceOptions === "function" ? roomChoiceOptions : null);
+  setChoiceField(form.elements.note, plan.note, typeof leadTrialNoteOptions === "function" ? leadTrialNoteOptions : null);
+  const hint = form.querySelector("[data-lead-trial-plan-hint]");
+  if (hint) hint.textContent = plan.hint;
+}
+
 function leadScenarioPresets() {
   return {
     referralTrial: {
@@ -615,7 +701,10 @@ function renderLeadTrialDialog(id) {
   ensureLeadData();
   const lead = appState.leads.find((item) => item.id === id);
   if (!lead) return;
-  const [start, end] = ["18:30", "19:30"];
+  const defaultPlanKey = "tomorrowEvening";
+  const defaultPlan = leadTrialPlanPresets(lead)[defaultPlanKey];
+  const defaultDate = leadTrialDatePresets()[defaultPlan.datePreset]?.date || leadDateOffset(1);
+  const [start, end] = defaultPlan.timeSlot.split("-").map((part) => part.trim());
   document.querySelector("#attendanceDialogBody").innerHTML = `
     <form method="dialog" id="leadTrialForm">
       <div class="dialog-head">
@@ -627,16 +716,18 @@ function renderLeadTrialDialog(id) {
       </div>
       <input type="hidden" name="leadId" value="${escapeHtml(lead.id)}" />
       <div class="form-grid">
-        <label>试听日期模板<select name="trialDatePreset">${leadDatePresetOptions(leadTrialDatePresets(), "tomorrow")}</select></label>
-        <label>试听日期<input name="date" type="date" value="${leadDateOffset(1)}" required /></label>
-        <label>试听时间段<select name="timeSlot">${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions("18:30-19:30") : "<option value=\"18:30-19:30\">试听 18:30-19:30</option>"}</select></label>
+        <label>试听安排模板<select name="trialPlan">${leadTrialPlanOptions(lead, defaultPlanKey)}</select></label>
+        <label>试听日期模板<select name="trialDatePreset">${leadDatePresetOptions(leadTrialDatePresets(), defaultPlan.datePreset)}</select></label>
+        <label>试听日期<input name="date" type="date" value="${escapeHtml(defaultDate)}" required /></label>
+        <label>试听时间段<select name="timeSlot">${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions(defaultPlan.timeSlot) : "<option value=\"18:30-19:30\">试听 18:30-19:30</option>"}</select></label>
         <label>开始时间<input name="startTime" type="time" value="${start}" required /></label>
         <label>结束时间<input name="endTime" type="time" value="${end}" required /></label>
-        <label>试听科目<select name="subject" required>${typeof subjectChoiceOptions === "function" ? subjectChoiceOptions(leadTrialSubjectValue(lead)) : `<option>${escapeHtml(leadTrialSubjectValue(lead))}</option>`}</select></label>
-        <label>试听老师<select name="teacher" required>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(leadTrialTeacherValue(lead, leadTrialSubjectValue(lead))) : `<option>${escapeHtml(leadTrialTeacherValue(lead, leadTrialSubjectValue(lead)))}</option>`}</select></label>
-        <label>教室<select name="room" required>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(leadTrialRoomValue(lead, leadTrialSubjectValue(lead))) : `<option>${escapeHtml(leadTrialRoomValue(lead, leadTrialSubjectValue(lead)))}</option>`}</select></label>
+        <label>试听科目<select name="subject" required>${typeof subjectChoiceOptions === "function" ? subjectChoiceOptions(defaultPlan.subject) : `<option>${escapeHtml(defaultPlan.subject)}</option>`}</select></label>
+        <label>试听老师<select name="teacher" required>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(defaultPlan.teacher) : `<option>${escapeHtml(defaultPlan.teacher)}</option>`}</select></label>
+        <label>教室<select name="room" required>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(defaultPlan.room) : `<option>${escapeHtml(defaultPlan.room)}</option>`}</select></label>
+        <div class="form-wide muted" data-lead-trial-plan-hint>${escapeHtml(defaultPlan.hint)}</div>
       </div>
-      <label class="stack-item">备注<select name="note">${typeof leadTrialNoteOptions === "function" ? leadTrialNoteOptions("招生试听课，试听后回访报名意向") : "<option>招生试听课，试听后回访报名意向</option>"}</select></label>
+      <label class="stack-item">备注<select name="note">${typeof leadTrialNoteOptions === "function" ? leadTrialNoteOptions(defaultPlan.note) : `<option>${escapeHtml(defaultPlan.note)}</option>`}</select></label>
       <div class="dialog-actions">
         <button value="cancel" type="submit">取消</button>
         <button class="primary-action" value="default" type="submit">保存试听</button>
@@ -846,6 +937,10 @@ document.addEventListener("change", (event) => {
 
   if (event.target.name === "trialDatePreset" && event.target.closest("#leadTrialForm")) {
     applyLeadDatePreset(event.target.form, "trialDatePreset", "date", leadTrialDatePresets());
+  }
+
+  if (event.target.name === "trialPlan" && event.target.closest("#leadTrialForm")) {
+    applyLeadTrialPlan(event.target.form);
   }
 
   if (event.target.name === "subject" && event.target.closest("#leadTrialForm")) {

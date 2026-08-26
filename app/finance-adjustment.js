@@ -153,11 +153,11 @@ function renderFinanceAdjustDialog(kind, orderId) {
       <div class="form-grid">
         <label>金额<input name="amount" type="number" min="0" max="${isRefund || isVoid ? paid : 999999}" step="1" value="${isVoid ? paid : isRefund ? Math.min(paid, 500) : 0}" ${isHours ? "" : "required"} /></label>
         <label>课时变动<input name="hours" type="number" min="${isHours ? -remaining : 0}" max="${isRefund || isVoid ? remaining : 999}" step="0.5" value="${isVoid ? remaining : isRefund ? Math.min(remaining, 1) : 1}" required /></label>
-        <label>经办人<input name="operator" value="${escapeHtml(order.owner || "前台老师")}" required /></label>
+        <label>经办人<select name="operator" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions(order.owner || "前台老师") : `<option>${escapeHtml(order.owner || "前台老师")}</option>`}</select></label>
         <label>处理方式<select name="method"><option>微信</option><option>支付宝</option><option>银行转账</option><option>现金</option><option>线下处理</option></select></label>
       </div>
       <div class="form-grid" style="grid-template-columns:1fr;">
-        <label>原因备注<input name="reason" value="${isVoid ? "误建订单，未开始上课，作废处理" : isRefund ? "家长退费，扣减剩余课时" : "人工课时调整"}" required /></label>
+        <label>原因备注<select name="reason" required>${typeof financeReasonOptions === "function" ? financeReasonOptions(kind, isVoid ? "误建订单，未开始上课，作废处理" : isRefund ? "家长退费，扣减剩余课时" : "人工课时调整") : `<option>${escapeHtml(isVoid ? "误建订单，未开始上课，作废处理" : isRefund ? "家长退费，扣减剩余课时" : "人工课时调整")}</option>`}</select></label>
       </div>
       <div class="dialog-actions">
         <span class="muted">${escapeHtml(help)}</span>

@@ -284,6 +284,28 @@ function paymentNoteOptions(selectedValue = "欠费补缴") {
   return choiceOptions(["欠费补缴", "家长补齐尾款", "分期补缴", "线下收款已核对", "财务复核后入账", "其他收款备注"], selectedValue);
 }
 
+function financeReasonOptions(kind = "refund", selectedValue = "") {
+  const defaults = {
+    refund: "家长退费，扣减剩余课时",
+    hours: "人工课时调整",
+    void: "误建订单，未开始上课，作废处理"
+  };
+  return choiceOptions(
+    [
+      defaults[kind] || defaults.refund,
+      "家长退费，扣减剩余课时",
+      "误建订单，未开始上课，作废处理",
+      "人工课时调整",
+      "赠课补录，增加可用课时",
+      "消课核对异常，修正剩余课时",
+      "报名信息录入错误，需财务调整",
+      "家长转班/停课，按协议处理",
+      "其他财务原因，线下备注"
+    ],
+    selectedValue || defaults[kind] || defaults.refund
+  );
+}
+
 function subjectChoiceOptions(selectedValue = "数学") {
   return choiceOptions(
     [

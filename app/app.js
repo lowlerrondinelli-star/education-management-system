@@ -469,6 +469,29 @@ function paymentAccountOptions(selectedValue = "校区收款账户") {
   return choiceOptions(["校区收款账户", "对公账户", "微信收款码", "支付宝收款码", "现金账户", "其他账户"], selectedValue);
 }
 
+function paymentMethodOptions(selectedValue = "微信") {
+  return choiceOptions(["微信", "支付宝", "银行转账", "现金", "线下收款"], selectedValue);
+}
+
+function paymentAccountForMethod(method) {
+  const map = {
+    微信: "微信收款码",
+    支付宝: "支付宝收款码",
+    银行转账: "对公账户",
+    现金: "现金账户",
+    线下收款: "校区收款账户"
+  };
+  return map[text(method).trim()] || "校区收款账户";
+}
+
+function applyPaymentMethodAccount(form, methodFieldName = "payMethod") {
+  const method = text(form?.elements?.[methodFieldName]?.value);
+  const account = paymentAccountForMethod(method);
+  if (!form?.elements?.account) return;
+  form.elements.account.innerHTML = paymentAccountOptions(account);
+  form.elements.account.value = account;
+}
+
 function paymentNoteOptions(selectedValue = "欠费补缴") {
   return choiceOptions(["欠费补缴", "家长补齐尾款", "分期补缴", "线下收款已核对", "财务复核后入账", "其他收款备注"], selectedValue);
 }

@@ -214,6 +214,8 @@ renderOrderQuickForm = function renderOrderQuickFormWithPaymentFields() {
   const defaultClass = getClass(selectedStudent?.className) || appState.classes[0] || {};
   const defaultCourse = defaultClass.course || selectedStudent?.course || "常规课程";
   const defaultPackage = selectedOrderPackage(defaultCourse);
+  const defaultMethod = "微信";
+  const defaultAccount = typeof paymentAccountForMethod === "function" ? paymentAccountForMethod(defaultMethod) : "微信收款码";
   return `
     <form class="operation-panel" id="orderForm">
       <div>
@@ -230,8 +232,8 @@ renderOrderQuickForm = function renderOrderQuickFormWithPaymentFields() {
         <label>实收金额<input name="paid" type="number" min="0" step="1" value="${escapeHtml(defaultPackage.paid)}" required /></label>
         <label>欠费金额<input name="debt" type="number" min="0" step="1" value="${escapeHtml(defaultPackage.debt)}" /></label>
         <label>有效期至<input name="expireAt" type="date" value="${escapeHtml(addMonthsToToday(defaultPackage.months))}" required /></label>
-        <label>收款方式<select name="payMethod"><option>微信</option><option>支付宝</option><option>银行转账</option><option>现金</option><option>线下收款</option></select></label>
-        <label>收款账户<select name="account">${typeof paymentAccountOptions === "function" ? paymentAccountOptions("校区收款账户") : "<option>校区收款账户</option>"}</select></label>
+        <label>收款方式<select name="payMethod">${typeof paymentMethodOptions === "function" ? paymentMethodOptions(defaultMethod) : "<option>微信</option><option>支付宝</option><option>银行转账</option><option>现金</option><option>线下收款</option>"}</select></label>
+        <label>收款账户<select name="account">${typeof paymentAccountOptions === "function" ? paymentAccountOptions(defaultAccount) : `<option>${escapeHtml(defaultAccount)}</option>`}</select></label>
         <label>支付单号<input name="tradeNo" placeholder="可选" /></label>
         <div class="muted order-package-hint" data-order-package-hint>${escapeHtml(`${defaultPackage.note} 有效期至 ${addMonthsToToday(defaultPackage.months)}，老师仍可按实际收款微调。`)}</div>
       </div>
@@ -309,6 +311,8 @@ function renderPaymentDialog(orderId) {
   const order = appState.orders.find((item) => item.id === orderId);
   if (!order) return;
   const debt = Number(order.debt || 0);
+  const defaultMethod = order.payMethod || "微信";
+  const defaultAccount = order.account || (typeof paymentAccountForMethod === "function" ? paymentAccountForMethod(defaultMethod) : "校区收款账户");
   paymentDialogBody.innerHTML = `
     <form method="dialog" id="paymentForm" data-order-id="${escapeHtml(order.id)}">
       <div class="dialog-head">
@@ -321,8 +325,8 @@ function renderPaymentDialog(orderId) {
       </div>
       <div class="form-grid">
         <label>本次收款<input name="amount" type="number" min="1" max="${debt}" step="1" value="${debt}" required /></label>
-        <label>收款方式<select name="method"><option>微信</option><option>支付宝</option><option>银行转账</option><option>现金</option><option>线下收款</option></select></label>
-        <label>收款账户<select name="account">${typeof paymentAccountOptions === "function" ? paymentAccountOptions(order.account || "校区收款账户") : `<option>${escapeHtml(order.account || "校区收款账户")}</option>`}</select></label>
+        <label>收款方式<select name="method">${typeof paymentMethodOptions === "function" ? paymentMethodOptions(defaultMethod) : "<option>微信</option><option>支付宝</option><option>银行转账</option><option>现金</option><option>线下收款</option>"}</select></label>
+        <label>收款账户<select name="account">${typeof paymentAccountOptions === "function" ? paymentAccountOptions(defaultAccount) : `<option>${escapeHtml(defaultAccount)}</option>`}</select></label>
         <label>支付单号<input name="tradeNo" value="${escapeHtml(order.tradeNo || "")}" /></label>
         <label>经办人<select name="operator">${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions(order.owner || "前台老师") : `<option>${escapeHtml(order.owner || "前台老师")}</option>`}</select></label>
         <label>备注<select name="note">${typeof paymentNoteOptions === "function" ? paymentNoteOptions("欠费补缴") : "<option>欠费补缴</option>"}</select></label>
@@ -441,6 +445,14 @@ document.addEventListener("change", (event) => {
 
   if (event.target.id === "orderCourseSelect" || event.target.id === "orderClassSelect") {
     refreshOrderPackageChoices();
+  }
+
+  if (event.target.name === "payMethod" && event.target.closest("#orderForm")) {
+    applyPaymentMethodAccount(event.target.form, "payMethod");
+  }
+
+  if (event.target.name === "method" && event.target.closest("#paymentForm")) {
+    applyPaymentMethodAccount(event.target.form, "method");
   }
 });
 

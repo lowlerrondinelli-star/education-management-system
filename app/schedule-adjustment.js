@@ -125,6 +125,7 @@ function renderScheduleAdjustmentDialog(kind, lessonId) {
       </div>
       <div class="form-grid">
         <label>上课日期<input name="date" type="date" value="${escapeHtml(date)}" ${isCancel ? "disabled" : "required"} /></label>
+        <label>上课时间段<select name="timeSlot" ${isCancel ? "disabled" : ""}>${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions(lesson.time || "18:30-20:00") : "<option value=\"18:30-20:00\">晚一 18:30-20:00</option>"}</select></label>
         <label>开始时间<input name="startTime" type="time" value="${escapeHtml(time.start)}" ${isCancel ? "disabled" : "required"} /></label>
         <label>结束时间<input name="endTime" type="time" value="${escapeHtml(time.end)}" ${isCancel ? "disabled" : "required"} /></label>
         <label>上课教师<select name="teacher" ${isCancel ? "disabled" : "required"}>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(lesson.teacher) : `<option>${escapeHtml(lesson.teacher)}</option>`}</select></label>

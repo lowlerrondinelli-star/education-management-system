@@ -324,6 +324,7 @@ function renderLeadTrialDialog(id) {
       <input type="hidden" name="leadId" value="${escapeHtml(lead.id)}" />
       <div class="form-grid">
         <label>试听日期<input name="date" type="date" value="${leadDateOffset(1)}" required /></label>
+        <label>试听时间段<select name="timeSlot">${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions("18:30-19:30") : "<option value=\"18:30-19:30\">试听 18:30-19:30</option>"}</select></label>
         <label>开始时间<input name="startTime" type="time" value="${start}" required /></label>
         <label>结束时间<input name="endTime" type="time" value="${end}" required /></label>
         <label>试听科目<select name="subject" required>${typeof subjectChoiceOptions === "function" ? subjectChoiceOptions(leadTrialSubjectValue(lead)) : `<option>${escapeHtml(leadTrialSubjectValue(lead))}</option>`}</select></label>

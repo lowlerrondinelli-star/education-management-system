@@ -305,6 +305,7 @@ function renderLeaveMakeupDialog(id) {
       </div>
       <div class="form-grid">
         <label>补课日期<input name="date" type="date" value="${escapeHtml(date)}" required /></label>
+        <label>补课时间段<select name="timeSlot">${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions(sourceLesson.time || "18:30-20:00") : "<option value=\"18:30-20:00\">晚一 18:30-20:00</option>"}</select></label>
         <label>开始时间<input name="startTime" type="time" value="${escapeHtml(time.start)}" required /></label>
         <label>结束时间<input name="endTime" type="time" value="${escapeHtml(time.end)}" required /></label>
         <label>上课教师<select name="teacher" required>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(item.teacher || sourceLesson.teacher || "前台老师") : `<option>${escapeHtml(item.teacher || sourceLesson.teacher || "前台老师")}</option>`}</select></label>

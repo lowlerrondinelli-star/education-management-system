@@ -39,6 +39,26 @@ paymentStyle.textContent = `
     line-height: 1.55;
   }
 
+  .payment-preview {
+    grid-column: 1 / -1;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #f8fafc;
+    padding: 10px;
+    display: grid;
+    gap: 4px;
+    line-height: 1.55;
+  }
+
+  .payment-preview strong {
+    font-size: 14px;
+  }
+
+  #paymentForm input[readonly] {
+    background: #f8fafc;
+    color: var(--muted);
+  }
+
   @media (max-width: 900px) {
     .payment-summary {
       grid-template-columns: 1fr;
@@ -290,6 +310,33 @@ function debtPaymentPresetOptions(order, selectedValue = "fullWechat") {
     .join("");
 }
 
+function paymentValueModeOptions(selectedValue = "auto") {
+  return [
+    ["auto", "按模板自动填写"],
+    ["manual", "手动微调金额"]
+  ]
+    .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
+    .join("");
+}
+
+function debtPaymentPreviewText(order, amount) {
+  const beforeDebt = Number(order?.debt || 0);
+  const paymentAmount = Math.min(Math.max(0, Number(amount || 0)), beforeDebt);
+  return `当前欠费 ${money(beforeDebt)}，本次收款 ${money(paymentAmount)}，保存后剩余欠费 ${money(Math.max(0, beforeDebt - paymentAmount))}。`;
+}
+
+function syncDebtPaymentPreview(form, order) {
+  if (!form || !order) return;
+  const preview = form.querySelector("[data-payment-preview]");
+  if (!preview) return;
+  preview.innerHTML = `<strong>补缴影响预览</strong><span class="muted">${escapeHtml(debtPaymentPreviewText(order, form.elements.amount?.value))}</span>`;
+}
+
+function applyDebtPaymentValueMode(form) {
+  if (!form?.elements?.amount) return;
+  form.elements.amount.readOnly = (form.elements.valueMode?.value || "auto") === "auto";
+}
+
 function applyDebtPaymentPreset(form, order) {
   if (!form || !order) return;
   const preset = debtPaymentPresets(order)[form.elements.paymentPreset?.value];
@@ -308,6 +355,8 @@ function applyDebtPaymentPreset(form, order) {
     form.elements.note.innerHTML = typeof paymentNoteOptions === "function" ? paymentNoteOptions(preset.note) : `<option>${escapeHtml(preset.note)}</option>`;
     form.elements.note.value = preset.note;
   }
+  applyDebtPaymentValueMode(form);
+  syncDebtPaymentPreview(form, order);
 }
 
 function applyOrderPackagePreset() {
@@ -550,12 +599,17 @@ function renderPaymentDialog(orderId) {
       </div>
       <div class="form-grid">
         <label>收款场景模板<select name="paymentPreset">${debtPaymentPresetOptions(order, "fullWechat")}</select></label>
-        <label>本次收款<input name="amount" type="number" min="1" max="${debt}" step="1" value="${debt}" required /></label>
+        <label>收款数值来源<select name="valueMode">${paymentValueModeOptions("auto")}</select></label>
+        <label>本次收款<input name="amount" type="number" min="1" max="${debt}" step="1" value="${debt}" required readonly /></label>
         <label>收款方式<select name="method">${typeof paymentMethodOptions === "function" ? paymentMethodOptions(defaultMethod) : "<option>微信</option><option>支付宝</option><option>银行转账</option><option>现金</option><option>线下收款</option>"}</select></label>
         <label>收款账户<select name="account">${typeof paymentAccountOptions === "function" ? paymentAccountOptions(defaultAccount) : `<option>${escapeHtml(defaultAccount)}</option>`}</select></label>
         <label>支付单号<input name="tradeNo" value="${escapeHtml(order.tradeNo || "")}" /></label>
         <label>经办人<select name="operator">${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions(order.owner || "前台老师") : `<option>${escapeHtml(order.owner || "前台老师")}</option>`}</select></label>
         <label>备注<select name="note">${typeof paymentNoteOptions === "function" ? paymentNoteOptions(defaultPreset.note) : `<option>${escapeHtml(defaultPreset.note)}</option>`}</select></label>
+        <div class="payment-preview" data-payment-preview>
+          <strong>补缴影响预览</strong>
+          <span class="muted">${escapeHtml(debtPaymentPreviewText(order, defaultPreset.amount))}</span>
+        </div>
       </div>
       <div class="dialog-actions">
         <span class="muted">保存后会同步减少订单欠费和学员欠费。</span>
@@ -700,6 +754,15 @@ document.addEventListener("change", (event) => {
     const order = appState.orders.find((item) => item.id === event.target.form.dataset.orderId);
     applyDebtPaymentPreset(event.target.form, order);
   }
+
+  if (event.target.name === "valueMode" && event.target.closest("#paymentForm")) {
+    applyDebtPaymentValueMode(event.target.form);
+  }
+
+  if (event.target.name === "amount" && event.target.closest("#paymentForm")) {
+    const order = appState.orders.find((item) => item.id === event.target.form.dataset.orderId);
+    syncDebtPaymentPreview(event.target.form, order);
+  }
 });
 
 document.addEventListener("submit", (event) => {
@@ -707,6 +770,12 @@ document.addEventListener("submit", (event) => {
   if (event.submitter?.value === "cancel") return;
   event.preventDefault();
   receiveDebtPayment(event.target);
+});
+
+document.addEventListener("input", (event) => {
+  if (event.target.name !== "amount" || !event.target.closest("#paymentForm")) return;
+  const order = appState.orders.find((item) => item.id === event.target.form.dataset.orderId);
+  syncDebtPaymentPreview(event.target.form, order);
 });
 
 ensurePaymentData();

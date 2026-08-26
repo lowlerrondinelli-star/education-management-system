@@ -42,6 +42,7 @@ const cleanUiSupportPanelMeta = {
     { key: "renewal", selector: ".renewal-board", label: "续费欠费", hint: "查看催缴续费沟通对象" },
     { key: "daily", selector: ".payment-daily-panel", label: "收款日报", hint: "查看当日收款和经办人" },
     { key: "risk", selector: ".order-risk-panel", label: "订单风险", hint: "查看欠费课时和有效期" },
+    { key: "finance", selector: ".finance-adjust-panel", label: "财务异常", hint: "查看退费作废和课时调整" },
     { key: "payments", selector: ".payment-list-panel", label: "收款对账", hint: "查看收款退费流水" },
     { key: "hours", selector: ".hour-audit-panel", label: "课时核对", hint: "查看余额差异和欠费" }
   ],
@@ -69,7 +70,9 @@ const cleanUiSupportPanelMeta = {
   data: [
     { key: "import", selector: ".import-panel", label: "CSV 导入", hint: "选择模板和导入文件" },
     { key: "readiness", selector: ".import-readiness-panel", label: "导入准备", hint: "检查依赖资料和校验点" },
-    { key: "quality", selector: ".data-quality-panel", label: "数据体检", hint: "查看缺字段欠费和冲突提醒" }
+    { key: "quality", selector: ".data-quality-panel", label: "数据体检", hint: "查看缺字段欠费和冲突提醒" },
+    { key: "health", selector: ".data-health-panel", label: "体检明细", hint: "查看异常数据和处理建议" },
+    { key: "fields", selector: ".data-field-panel", label: "字段审计", hint: "查看各表字段完整度" }
   ],
   templates: [
     { key: "fields", selector: ".template-field-index", label: "字段总览", hint: "跨 Excel 模板查看字段" },
@@ -80,7 +83,8 @@ const cleanUiSupportPanelMeta = {
     { key: "insights", selector: ".report-insight-panel", label: "经营洞察", hint: "查看风险和下一步建议" },
     { key: "courses", selector: ".report-course-panel", label: "课程经营", hint: "查看课程收入欠费和余额" },
     { key: "teacherClass", selector: ".report-teacher-class-panel", label: "教师班级", hint: "查看课量容量和班级状态" },
-    { key: "channels", selector: ".report-channel-panel", label: "招生渠道", hint: "查看线索来源质量" }
+    { key: "channels", selector: ".report-channel-panel", label: "招生渠道", hint: "查看线索来源质量" },
+    { key: "teacherHours", selector: ".teacher-hour-panel", label: "教师课时", hint: "核对点名反馈和课酬状态" }
   ]
 };
 

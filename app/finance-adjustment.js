@@ -161,7 +161,7 @@ function injectFinanceOrderControls() {
 
   const paymentSection = [...appContent.querySelectorAll(".section")].find((section) => section.textContent.includes("收款流水"));
   if (paymentSection && !appContent.querySelector(".finance-adjust-list")) {
-    paymentSection.insertAdjacentHTML("beforebegin", `<section class="section"><div class="section-body">${renderFinanceAdjustmentSummary()}</div></section>`);
+    paymentSection.insertAdjacentHTML("beforebegin", `<section class="section finance-adjust-panel"><div class="section-body">${renderFinanceAdjustmentSummary()}</div></section>`);
   }
 }
 

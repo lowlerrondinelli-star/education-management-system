@@ -115,6 +115,25 @@ function lessonClosureStepTags(state) {
   ].join("");
 }
 
+function lessonClosureRiskActions(riskStudents) {
+  const actions = riskStudents.slice(0, 2).map((student) => {
+    const label = Number(student.debt || 0) > 0 ? "欠费跟进" : "续费跟进";
+    return `<button class="small-button" type="button" data-student-follow="${escapeHtml(student.id)}">${escapeHtml(student.name)} ${label}</button>`;
+  });
+  if (riskStudents.length > actions.length) actions.push(`<button class="small-button" type="button" data-go="followUp">更多跟进</button>`);
+  return actions.join("");
+}
+
+function lessonClosureDialogRiskActions(riskStudents) {
+  const actions = riskStudents.slice(0, 2).map((student) => {
+    const label = Number(student.debt || 0) > 0 ? "欠费跟进" : "续费跟进";
+    return `<button class="small-button" type="button" data-closure-follow="${escapeHtml(student.id)}">${escapeHtml(student.name)} ${label}</button>`;
+  });
+  if (!actions.length) return `<button class="small-button" type="button" disabled>暂无风险</button>`;
+  if (riskStudents.length > actions.length) actions.push(`<button class="small-button" type="button" data-closure-go="followUp">更多跟进</button>`);
+  return actions.join("");
+}
+
 function renderLessonClosurePanel(lesson) {
   const state = lessonClosureStatus(lesson);
   const nextAction = !state.attendanceDone ? "先点名" : !state.consumeDone ? "确认上课" : !state.feedbackSent ? "写反馈" : state.riskStudents.length ? "去跟进" : "已闭环";
@@ -129,7 +148,7 @@ function renderLessonClosurePanel(lesson) {
       <button class="small-button" type="button" data-finish-lesson="${escapeHtml(lesson.id)}" ${state.consumeDone ? "disabled" : ""}>确认上课</button>
       <button class="small-button" type="button" data-feedback-lesson="${escapeHtml(lesson.id)}">${state.feedbackSent ? "查看反馈" : "写反馈"}</button>
       <button class="small-button" type="button" data-go="consume">消课流水</button>
-      ${state.riskStudents.length ? `<button class="small-button" type="button" data-go="followUp">续费跟进</button>` : ""}
+      ${lessonClosureRiskActions(state.riskStudents)}
     </div>
   </div>`;
 }
@@ -174,7 +193,7 @@ function renderLessonClosureDialog(lessonId) {
           <div class="closure-step-card">
             <strong>4. 跟进续费风险</strong>
             <span class="muted">需关注：${escapeHtml(riskNames)}</span>
-            <button class="small-button" type="button" data-closure-go="followUp" ${state.riskStudents.length ? "" : "disabled"}>去跟进</button>
+            <div class="lesson-closure-actions">${lessonClosureDialogRiskActions(state.riskStudents)}</div>
           </div>
         </div>
       </div>
@@ -223,5 +242,11 @@ document.addEventListener("click", (event) => {
   if (goButton) {
     if (attendanceDialog.open) attendanceDialog.close();
     setView(goButton.dataset.closureGo);
+  }
+
+  const followButton = event.target.closest("[data-closure-follow]");
+  if (followButton) {
+    if (attendanceDialog.open) attendanceDialog.close();
+    openFollowUpFormForStudent(followButton.dataset.closureFollow);
   }
 });

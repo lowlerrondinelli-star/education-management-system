@@ -137,6 +137,7 @@ function lessonExecutionStudentRisks(lesson) {
   return students
     .filter((student) => Number(student.balance || 0) <= 3 || Number(student.debt || 0) > 0)
     .map((student) => ({
+      id: student.id,
       name: student.name,
       balance: Number(student.balance || 0),
       debt: Number(student.debt || 0)
@@ -253,6 +254,18 @@ function lessonExecutionRiskText(risks) {
     .join("；");
 }
 
+function lessonExecutionRiskActions(risks) {
+  const actions = risks
+    .filter((risk) => risk.id)
+    .slice(0, 2)
+    .map((risk) => {
+      const label = risk.debt > 0 ? "欠费跟进" : "续费跟进";
+      return `<button class="small-button" type="button" data-student-follow="${escapeHtml(risk.id)}">${escapeHtml(risk.name)} ${label}</button>`;
+    });
+  if (risks.length > actions.length) actions.push(`<button class="small-button" type="button" data-go="followUp">更多跟进</button>`);
+  return actions.join("");
+}
+
 function lessonExecutionStep(label, done, textValue, tone = "") {
   return `<div class="lesson-execution-step">
     <span>${tag(done ? "已完成" : "待处理", done ? "green" : tone || "amber")}</span>
@@ -294,7 +307,7 @@ function renderLessonExecutionCard(lesson) {
       <button class="small-button" type="button" data-attendance-lesson="${escapeHtml(lesson.id)}" ${lesson.status === "已取消" ? "disabled" : ""}>点名</button>
       <button class="small-button" type="button" data-finish-lesson="${escapeHtml(lesson.id)}" ${!state.hasAttendance || state.isFinished || lesson.status === "已取消" ? "disabled" : ""}>确认消课</button>
       <button class="small-button" type="button" data-feedback-lesson="${escapeHtml(lesson.id)}" ${lesson.status === "已取消" ? "disabled" : ""}>反馈</button>
-      <button class="small-button" type="button" data-go="followUp">续费跟进</button>
+      ${lessonExecutionRiskActions(state.risks) || `<button class="small-button" type="button" data-go="followUp">跟进台</button>`}
     </div>
   </article>`;
 }
@@ -315,6 +328,7 @@ function renderLessonExecutionRows(lessons) {
         <div class="lesson-execution-actions">
           <button class="small-button" type="button" data-attendance-lesson="${escapeHtml(lesson.id)}">点名</button>
           <button class="small-button" type="button" data-feedback-lesson="${escapeHtml(lesson.id)}">反馈</button>
+          ${lessonExecutionRiskActions(state.risks)}
         </div>
       </td>
     </tr>`;

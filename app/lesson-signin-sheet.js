@@ -211,7 +211,7 @@ function renderLessonSigninRows(rows) {
     <td>
       <div class="lesson-signin-actions">
         <button class="small-button" type="button" data-student-detail="${escapeHtml(row.studentId)}">详情</button>
-        <button class="small-button" type="button" data-go="followUp">跟进</button>
+        <button class="small-button" type="button" data-student-follow="${escapeHtml(row.studentId)}">${row.debt > 0 ? "欠费跟进" : row.balance <= 3 ? "续费跟进" : "跟进"}</button>
       </div>
     </td>
   </tr>`);

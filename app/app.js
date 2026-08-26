@@ -1110,6 +1110,14 @@ function setView(view) {
   renderView();
 }
 
+function openLessonFormForClass(className) {
+  if (!className) return;
+  selectedClassForLesson = className;
+  setNotice("schedule", `${className} 已带入新增排课表单，可直接核对日期和时间后保存。`, "amber");
+  setView("schedule");
+  setTimeout(() => document.querySelector('[data-clean-panel-open="lessonForm"]')?.click(), 30);
+}
+
 function table(headers, rows) {
   return `
     <div class="table-wrap">
@@ -1932,6 +1940,9 @@ document.addEventListener("click", (event) => {
 
   const goButton = event.target.closest("[data-go]");
   if (goButton) setView(goButton.dataset.go);
+
+  const classScheduleButton = event.target.closest("[data-class-schedule]");
+  if (classScheduleButton) openLessonFormForClass(classScheduleButton.dataset.classSchedule);
 
   const finishButton = event.target.closest("[data-finish-lesson]");
   if (finishButton) finishLesson(finishButton.dataset.finishLesson);

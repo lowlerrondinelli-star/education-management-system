@@ -572,7 +572,7 @@ function showClassProfile(className) {
             ["班级剩余课时合计", balanceTotal]
           ])}
           <div class="action-row">
-            <button class="small-button" type="button" data-go="schedule">去排课</button>
+            <button class="small-button" type="button" data-class-schedule="${escapeHtml(classItem.name)}">去排课</button>
             <button class="small-button" type="button" data-go="data">导出数据</button>
           </div>
         </section>
@@ -663,7 +663,7 @@ document.addEventListener("click", (event) => {
 
   if (event.target.closest("[data-close-class-profile]")) classProfileDialog.close();
 
-  if (event.target.closest("[data-go]") && classProfileDialog.open) classProfileDialog.close();
+  if (event.target.closest("[data-go], [data-class-schedule]") && classProfileDialog.open) classProfileDialog.close();
 });
 
 if (currentView === "classes") {

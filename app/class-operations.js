@@ -196,7 +196,7 @@ function renderClassOpsRows(classes) {
       <td>
         <div class="class-ops-actions">
           <button class="small-button" type="button" data-class-detail="${escapeHtml(classItem.name)}">详情</button>
-          <button class="small-button" type="button" data-go="schedule">排课</button>
+          <button class="small-button" type="button" data-class-schedule="${escapeHtml(classItem.name)}">排课</button>
           <button class="small-button" type="button" data-go="students">分班</button>
           <button class="small-button" type="button" data-go="orders">订单</button>
         </div>

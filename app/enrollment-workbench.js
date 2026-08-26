@@ -351,11 +351,7 @@ document.addEventListener("click", (event) => {
 
   const scheduleButton = event.target.closest("[data-enrollment-schedule]");
   if (scheduleButton) {
-    const className = scheduleButton.dataset.enrollmentSchedule;
-    selectedClassForLesson = className;
-    setNotice("schedule", `${className} 已带入新增排课表单，可直接核对日期和时间后保存。`, "amber");
-    setView("schedule");
-    setTimeout(() => document.querySelector('[data-clean-panel-open="lessonForm"]')?.click(), 30);
+    openLessonFormForClass(scheduleButton.dataset.enrollmentSchedule);
   }
 });
 

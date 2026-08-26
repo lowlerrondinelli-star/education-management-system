@@ -288,8 +288,8 @@ function renderLessonPrepRows(rows) {
         <div class="lesson-prep-actions">
           <button class="small-button" type="button" data-attendance-lesson="${escapeHtml(row.lessonId)}" ${row.lessonStatus === "已取消" ? "disabled" : ""}>点名</button>
           <button class="small-button" type="button" data-student-detail="${escapeHtml(row.studentId)}" ${row.studentId ? "" : "disabled"}>详情</button>
-          <button class="small-button" type="button" data-schedule-leave="${escapeHtml(row.lessonId)}" ${row.lessonStatus === "已取消" || row.rosterMissing ? "disabled" : ""}>请假</button>
-          <button class="small-button" type="button" data-go="followUp" ${row.rosterMissing ? "disabled" : ""}>跟进</button>
+          <button class="small-button" type="button" data-lesson-leave="${escapeHtml(row.lessonId)}" ${row.lessonStatus === "已取消" || row.rosterMissing ? "disabled" : ""}>请假</button>
+          <button class="small-button" type="button" data-student-follow="${escapeHtml(row.studentId)}" ${row.rosterMissing ? "disabled" : ""}>跟进</button>
         </div>
       </td>
     </tr>`;

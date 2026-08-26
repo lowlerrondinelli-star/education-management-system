@@ -240,7 +240,7 @@ function renderAttendanceAuditRows(rows) {
       <div class="attendance-audit-actions">
         <button class="small-button" type="button" data-attendance-lesson="${escapeHtml(row.lessonId)}">点名</button>
         <button class="small-button" type="button" data-student-detail="${escapeHtml(row.studentId)}">学员详情</button>
-        ${row.leaveId ? `<button class="small-button" type="button" data-go="leaves">请假台</button>` : `<button class="small-button" type="button" data-schedule-leave="${escapeHtml(row.lessonId)}">补请假</button>`}
+        ${row.leaveId ? `<button class="small-button" type="button" data-go="leaves">请假台</button>` : `<button class="small-button" type="button" data-lesson-leave="${escapeHtml(row.lessonId)}">补请假</button>`}
       </div>
     </td>
   </tr>`);

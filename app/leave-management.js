@@ -500,7 +500,7 @@ function injectLeaveShortcuts() {
   appContent.querySelectorAll("[data-attendance-lesson]").forEach((button) => {
     const lesson = appState.lessons.find((item) => item.id === button.dataset.attendanceLesson);
     const card = button.closest(".lesson-card");
-    if (!lesson || !card || card.querySelector("[data-schedule-leave]")) return;
+    if (!lesson || !card || card.querySelector("[data-lesson-leave]")) return;
     const disabled = lesson.status === "已上课" || lesson.status === "已取消";
     const target = card.querySelector(".schedule-adjust-actions") || button.closest(".attendance-actions");
     target?.insertAdjacentHTML("beforeend", `<button class="small-button leave-shortcut" type="button" data-lesson-leave="${escapeHtml(lesson.id)}" ${disabled ? "disabled" : ""}>请假</button>`);
@@ -660,7 +660,7 @@ if (typeof renderDataCenter === "function") {
 
 document.addEventListener("click", (event) => {
   const leaveButton = event.target.closest("[data-schedule-leave]");
-  if (leaveButton) renderScheduleLeaveDialog(leaveButton.dataset.scheduleLeave);
+  if (leaveButton) openLeaveFormForLesson(leaveButton.dataset.scheduleLeave);
 
   const approveButton = event.target.closest("[data-leave-approve]");
   if (approveButton) approveLeave(approveButton.dataset.leaveApprove);

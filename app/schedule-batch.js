@@ -185,6 +185,7 @@ function renderBatchSchedulePanel() {
         <label>开始日期<input name="startDate" type="date" value="${dates.start}" required /></label>
         <label>结束日期<input name="endDate" type="date" value="${dates.end}" required /></label>
         <label>课节类型<select name="type"><option>班级课</option><option>1对1</option></select></label>
+        <label>上课时间段<select name="timeSlot">${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions("18:30-20:00") : "<option value=\"18:30-20:00\">晚一 18:30-20:00</option>"}</select></label>
         <label>开始时间<input name="startTime" type="time" value="18:30" required /></label>
         <label>结束时间<input name="endTime" type="time" value="20:00" required /></label>
         <label>上课教师<select name="teacher" required>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(defaultClass.teacher || "任课老师") : `<option>${escapeHtml(defaultClass.teacher || "任课老师")}</option>`}</select></label>

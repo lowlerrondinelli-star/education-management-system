@@ -202,6 +202,7 @@ renderLessonForm = function renderLessonFormWithMasterData() {
       </div>
       <div class="operation-grid">
         <label>上课日期<input name="date" type="date" value="2026-09-07" required /></label>
+        <label>上课时间段<select name="timeSlot" id="lessonTimeSlotSelect">${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions("18:30-20:00") : "<option value=\"18:30-20:00\">晚一 18:30-20:00</option>"}</select></label>
         <label>开始时间<input name="startTime" type="time" value="18:30" required /></label>
         <label>结束时间<input name="endTime" type="time" value="20:00" required /></label>
         <label>班级/对象<select name="target" id="lessonTargetSelect" required>${classOptions(defaultClass.name)}</select></label>

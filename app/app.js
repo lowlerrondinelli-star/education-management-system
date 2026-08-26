@@ -319,6 +319,31 @@ function scheduleReasonOptions(kind = "reschedule", selectedValue = "") {
   );
 }
 
+function lessonTimeSlotOptions(selectedValue = "18:30-20:00") {
+  const slots = [
+    ["08:30-10:00", "上午一 08:30-10:00"],
+    ["10:10-11:40", "上午二 10:10-11:40"],
+    ["13:30-15:00", "下午一 13:30-15:00"],
+    ["15:10-16:40", "下午二 15:10-16:40"],
+    ["17:00-18:00", "一对一 17:00-18:00"],
+    ["18:30-20:00", "晚一 18:30-20:00"],
+    ["19:00-20:30", "晚二 19:00-20:30"],
+    ["20:10-21:40", "晚三 20:10-21:40"],
+    ["custom", "自定义时间"]
+  ];
+  return slots
+    .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
+    .join("");
+}
+
+function applyLessonTimeSlot(form) {
+  const slot = text(form?.elements?.timeSlot?.value);
+  if (!slot || slot === "custom" || !slot.includes("-")) return;
+  const [start, end] = slot.split("-").map((part) => part.trim());
+  if (form.elements.startTime) form.elements.startTime.value = start;
+  if (form.elements.endTime) form.elements.endTime.value = end;
+}
+
 function followUpNoteOptions(selectedValue = "家长约定周五补缴") {
   return choiceOptions(
     [
@@ -1480,6 +1505,10 @@ document.addEventListener("change", (event) => {
 
   if (event.target.id === "studentClassSelect") {
     syncStudentClassCourse();
+  }
+
+  if (event.target.name === "timeSlot") {
+    applyLessonTimeSlot(event.target.form || event.target.closest("form"));
   }
 });
 

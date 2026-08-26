@@ -426,10 +426,23 @@ function updateLeadStatus(id, status, result = status) {
   setView("leads");
 }
 
-function leadTrialMatchedClass(lead) {
+function leadTextMatchesSubject(value, subject) {
+  return !subject || text(value).includes(subject);
+}
+
+function leadTrialMatchedClass(lead, subject = "") {
   const course = text(lead.course).trim();
-  if (!course) return null;
-  return (appState.classes || []).find((item) => text(item.course).trim() === course || text(item.course).includes(course) || course.includes(text(item.course)));
+  const classes = appState.classes || [];
+  const courseMatched = course
+    ? classes.find(
+        (item) =>
+          (text(item.course).trim() === course || text(item.course).includes(course) || course.includes(text(item.course))) &&
+          leadTextMatchesSubject(`${item.course} ${item.name}`, subject)
+      )
+    : null;
+  if (courseMatched) return courseMatched;
+  if (!subject) return null;
+  return classes.find((item) => leadTextMatchesSubject(`${item.course} ${item.name}`, subject)) || null;
 }
 
 function leadTrialSubjectValue(lead) {
@@ -443,15 +456,42 @@ function leadTrialSubjectValue(lead) {
   return "数学";
 }
 
-function leadTrialTeacherValue(lead) {
-  const matchedClass = leadTrialMatchedClass(lead);
+function leadTrialTeacherValue(lead, subject = leadTrialSubjectValue(lead)) {
+  const matchedClass = leadTrialMatchedClass(lead, subject);
   if (matchedClass?.teacher) return matchedClass.teacher;
+  const grade = text(lead.grade);
+  const matchedTeacher = (appState.teachers || []).find((teacher) => {
+    if (teacher.status === "离职") return false;
+    const subjects = text(teacher.subjects);
+    const grades = text(teacher.grades);
+    const subjectMatched = !subject || subjects.includes(subject) || text(teacher.name).includes(subject);
+    const gradeMatched = !grade || !grades || grades.includes(grade.replace("年级", "")) || grade.includes(grades.replace("年级", ""));
+    return subjectMatched && gradeMatched;
+  });
+  if (matchedTeacher?.name) return matchedTeacher.name;
   return lead.owner || appState.teachers?.[0]?.name || "前台老师";
 }
 
-function leadTrialRoomValue(lead) {
-  const matchedClass = leadTrialMatchedClass(lead);
-  return matchedClass?.room || "试听教室";
+function leadTrialRoomValue(lead, subject = leadTrialSubjectValue(lead)) {
+  const matchedClass = leadTrialMatchedClass(lead, subject);
+  if (matchedClass?.room) return matchedClass.room;
+  const course = (appState.courses || []).find((item) => item.name === lead.course);
+  const onlineRoom = (appState.rooms || []).find((room) => room.name === "线上课程");
+  if (course?.mode === "线上" && onlineRoom) return onlineRoom.name;
+  const matchedRoom = (appState.rooms || []).find((room) => {
+    if (room.status !== "可排课") return false;
+    const source = `${room.name} ${room.note} ${room.type}`;
+    return leadTextMatchesSubject(source, subject) || source.includes("一对一") || source.includes("备用");
+  });
+  return matchedRoom?.name || "试听教室";
+}
+
+function syncLeadTrialSubjectDefaults(form) {
+  const lead = appState.leads.find((item) => item.id === form?.elements?.leadId?.value);
+  if (!lead) return;
+  const subject = form.elements.subject?.value || leadTrialSubjectValue(lead);
+  setChoiceField(form.elements.teacher, leadTrialTeacherValue(lead, subject), typeof teacherChoiceOptions === "function" ? teacherChoiceOptions : null);
+  setChoiceField(form.elements.room, leadTrialRoomValue(lead, subject), typeof roomChoiceOptions === "function" ? roomChoiceOptions : null);
 }
 
 function renderLeadTrialDialog(id) {
@@ -476,8 +516,8 @@ function renderLeadTrialDialog(id) {
         <label>开始时间<input name="startTime" type="time" value="${start}" required /></label>
         <label>结束时间<input name="endTime" type="time" value="${end}" required /></label>
         <label>试听科目<select name="subject" required>${typeof subjectChoiceOptions === "function" ? subjectChoiceOptions(leadTrialSubjectValue(lead)) : `<option>${escapeHtml(leadTrialSubjectValue(lead))}</option>`}</select></label>
-        <label>试听老师<select name="teacher" required>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(leadTrialTeacherValue(lead)) : `<option>${escapeHtml(leadTrialTeacherValue(lead))}</option>`}</select></label>
-        <label>教室<select name="room" required>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(leadTrialRoomValue(lead)) : `<option>${escapeHtml(leadTrialRoomValue(lead))}</option>`}</select></label>
+        <label>试听老师<select name="teacher" required>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(leadTrialTeacherValue(lead, leadTrialSubjectValue(lead))) : `<option>${escapeHtml(leadTrialTeacherValue(lead, leadTrialSubjectValue(lead)))}</option>`}</select></label>
+        <label>教室<select name="room" required>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(leadTrialRoomValue(lead, leadTrialSubjectValue(lead))) : `<option>${escapeHtml(leadTrialRoomValue(lead, leadTrialSubjectValue(lead)))}</option>`}</select></label>
       </div>
       <label class="stack-item">备注<select name="note">${typeof leadTrialNoteOptions === "function" ? leadTrialNoteOptions("招生试听课，试听后回访报名意向") : "<option>招生试听课，试听后回访报名意向</option>"}</select></label>
       <div class="dialog-actions">
@@ -685,6 +725,10 @@ document.addEventListener("change", (event) => {
 
   if (event.target.name === "trialDatePreset" && event.target.closest("#leadTrialForm")) {
     applyLeadDatePreset(event.target.form, "trialDatePreset", "date", leadTrialDatePresets());
+  }
+
+  if (event.target.name === "subject" && event.target.closest("#leadTrialForm")) {
+    syncLeadTrialSubjectDefaults(event.target.form);
   }
 });
 

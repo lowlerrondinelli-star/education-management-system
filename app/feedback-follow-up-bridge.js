@@ -32,6 +32,7 @@ function syncFeedbackFollowUps(lessonId) {
       const existing = appState.followUps.find((item) => item.key === key);
       const payload = {
         key,
+        studentId: student?.id || feedback.studentId || "",
         student: feedback.student,
         phone: student?.phone || "",
         type: "高风险反馈",

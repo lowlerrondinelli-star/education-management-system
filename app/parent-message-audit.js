@@ -217,6 +217,15 @@ function parentMessageReasonTags(row) {
   return `<div class="parent-message-audit-tags">${parentMessageReasonItems(row).map((item) => tag(item.label, item.tone)).join("")}</div>`;
 }
 
+function parentMessageFollowAction(row) {
+  if (!row.studentId) return `<button class="small-button" type="button" disabled>跟进</button>`;
+  let label = "跟进";
+  if (row.risk === "高") label = "高风险回访";
+  else if (row.debt > 0) label = "欠费跟进";
+  else if (row.balance <= 3) label = "续费跟进";
+  return `<button class="small-button" type="button" data-student-follow="${escapeHtml(row.studentId)}">${label}</button>`;
+}
+
 function renderParentMessageRows(rows) {
   return rows.map((row) => `<tr>
     <td><strong>${escapeHtml(row.date)}</strong><br><span class="muted">${escapeHtml(row.time)} / ${escapeHtml(row.subject)}</span></td>
@@ -230,7 +239,7 @@ function renderParentMessageRows(rows) {
       <div class="parent-message-audit-actions">
         <button class="small-button" type="button" data-feedback-lesson="${escapeHtml(row.lessonId)}">${row.status === "未生成" ? "写反馈" : "编辑"}</button>
         <button class="small-button" type="button" data-student-detail="${escapeHtml(row.studentId)}" ${row.studentId ? "" : "disabled"}>详情</button>
-        <button class="small-button" type="button" data-go="followUp" ${row.studentId ? "" : "disabled"}>跟进</button>
+        ${parentMessageFollowAction(row)}
       </div>
     </td>
   </tr>`);

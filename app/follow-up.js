@@ -43,13 +43,51 @@ followUpStyle.textContent = `
 document.head.appendChild(followUpStyle);
 
 function todayText() {
-  return new Date().toISOString().slice(0, 10);
+  return typeof todayIsoDate === "function" ? todayIsoDate() : localFollowUpDate(new Date());
+}
+
+function localFollowUpDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function daysFromToday(offset) {
-  const date = new Date();
+  const date = new Date(`${todayText()}T00:00:00`);
   date.setDate(date.getDate() + offset);
-  return date.toISOString().slice(0, 10);
+  return localFollowUpDate(date);
+}
+
+function nextMondayFromToday() {
+  const date = new Date(`${todayText()}T00:00:00`);
+  const day = date.getDay();
+  const offset = day === 1 ? 7 : (8 - day) % 7 || 7;
+  date.setDate(date.getDate() + offset);
+  return localFollowUpDate(date);
+}
+
+function followUpDueDatePresets() {
+  return {
+    today: { label: `今天 ${todayText()}`, date: todayText() },
+    tomorrow: { label: `明天 ${daysFromToday(1)}`, date: daysFromToday(1) },
+    threeDays: { label: `三天后 ${daysFromToday(3)}`, date: daysFromToday(3) },
+    week: { label: `一周后 ${daysFromToday(7)}`, date: daysFromToday(7) },
+    nextMonday: { label: `下周一 ${nextMondayFromToday()}`, date: nextMondayFromToday() },
+    custom: { label: "自定义日期", date: "" }
+  };
+}
+
+function followUpDueDateOptions(selectedValue = "tomorrow") {
+  return Object.entries(followUpDueDatePresets())
+    .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function applyFollowUpDuePreset(form) {
+  const preset = followUpDueDatePresets()[form?.elements?.duePreset?.value];
+  if (!preset?.date) return;
+  if (form.elements.dueDate) form.elements.dueDate.value = preset.date;
 }
 
 function followUpKey(type, studentName) {
@@ -244,6 +282,7 @@ function renderFollowUpForm() {
         <label>学员<select name="studentId" required>${studentOptions(appState.students[0]?.id || "")}</select></label>
         <label>跟进类型<select name="type">${followUpTypes.map((item) => `<option>${escapeHtml(item)}</option>`).join("")}</select></label>
         <label>跟进人<select name="owner" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions("前台老师") : "<option>前台老师</option>"}</select></label>
+        <label>跟进日期模板<select name="duePreset">${followUpDueDateOptions("tomorrow")}</select></label>
         <label>下次跟进<input name="dueDate" type="date" value="${daysFromToday(1)}" required /></label>
         <label>跟进结果<select name="result">${followUpResults.map((item) => `<option>${escapeHtml(item)}</option>`).join("")}</select></label>
         <label>优先级<select name="priority"><option>中</option><option>高</option><option>低</option></select></label>
@@ -325,6 +364,12 @@ document.addEventListener("click", (event) => {
 
   const doneButton = event.target.closest("[data-follow-done]");
   if (doneButton) updateFollowUpResult(doneButton.dataset.followDone, "已完成", true);
+});
+
+document.addEventListener("change", (event) => {
+  if (event.target.name === "duePreset" && event.target.closest("#followUpForm")) {
+    applyFollowUpDuePreset(event.target.form);
+  }
 });
 
 saveState();

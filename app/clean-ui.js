@@ -18,6 +18,12 @@ const cleanUiPanelMeta = {
 };
 
 const cleanUiSupportPanelMeta = {
+  dashboard: [
+    { key: "tasks", selector: ".task-center-panel", label: "统一待办", hint: "查看当前账号可处理事项" },
+    { key: "flow", selector: ".operation-flow-panel", label: "运营流程", hint: "查看校区业务闭环路径" },
+    { key: "handover", selector: ".daily-handover-panel", label: "交接日报", hint: "导出当天交接清单" },
+    { key: "roles", selector: ".role-launch-panel", label: "角色入口", hint: "按岗位打开高频功能" }
+  ],
   schedule: [
     { key: "quality", selector: ".schedule-quality", label: "排课健康", hint: "查看冲突和课节统计" },
     { key: "signin", selector: ".lesson-signin-panel", label: "课前签到", hint: "查看到课和资金风险" },
@@ -69,10 +75,17 @@ const cleanUiSupportPanelMeta = {
     { key: "fields", selector: ".template-field-index", label: "字段总览", hint: "跨 Excel 模板查看字段" },
     { key: "cards", selector: ".template-card-panel", label: "字段卡片", hint: "按模板查看必填字段" },
     { key: "local", selector: ".local-template-panel", label: "本地模板", hint: "查看电脑模板和导入顺序" }
+  ],
+  reports: [
+    { key: "insights", selector: ".report-insight-panel", label: "经营洞察", hint: "查看风险和下一步建议" },
+    { key: "courses", selector: ".report-course-panel", label: "课程经营", hint: "查看课程收入欠费和余额" },
+    { key: "teacherClass", selector: ".report-teacher-class-panel", label: "教师班级", hint: "查看课量容量和班级状态" },
+    { key: "channels", selector: ".report-channel-panel", label: "招生渠道", hint: "查看线索来源质量" }
   ]
 };
 
 const cleanUiSupportGroupMeta = {
+  dashboard: { title: "首页辅助" },
   schedule: { title: "课表辅助" },
   students: { title: "学员辅助" },
   classes: { title: "班级辅助" },
@@ -83,7 +96,8 @@ const cleanUiSupportGroupMeta = {
   leads: { title: "招生辅助" },
   followUp: { title: "续费辅助" },
   data: { title: "数据辅助" },
-  templates: { title: "模板辅助" }
+  templates: { title: "模板辅助" },
+  reports: { title: "报表辅助" }
 };
 
 function cleanUiViewKey() {

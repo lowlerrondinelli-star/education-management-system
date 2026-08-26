@@ -318,11 +318,11 @@ function renderReports() {
         </div>
       </section>
     </div>
-    <section class="section">
+    <section class="section report-course-panel">
       <div class="section-head compact-head"><h3>课程经营</h3><span class="muted">按订单课程汇总收入、欠费和课时余额</span></div>
       ${table(["课程", "订单", "实收", "欠费", "购买课时", "已上", "余额"], courseTableRows)}
     </section>
-    <section class="section">
+    <section class="section report-teacher-class-panel">
       <div class="section-head compact-head"><h3>教师与班级</h3><span class="muted">排课工作量、班级容量和状态</span></div>
       <div class="section-body">
         <div class="layout-two">
@@ -331,7 +331,7 @@ function renderReports() {
         </div>
       </div>
     </section>
-    <section class="section">
+    <section class="section report-channel-panel">
       <div class="section-head compact-head"><h3>招生渠道</h3><span class="muted">用于判断线索来源质量</span></div>
       ${table(["渠道", "学员", "已报名", "意向", "实收", "欠费"], channelTableRows)}
     </section>`;

@@ -493,6 +493,15 @@ function saveLessonFeedback(form, status) {
   setView("feedback");
 }
 
+function openFeedbackDialogForLesson(lessonId) {
+  if (!lessonId) return;
+  const lesson = appState.lessons.find((item) => item.id === lessonId);
+  if (lesson) setNotice("feedback", `${lesson.target} 已带入课后反馈，可直接套用场景模板并保存。`, "amber");
+  if (attendanceDialog.open) attendanceDialog.close();
+  setView("feedback");
+  setTimeout(() => renderFeedbackDialog(lessonId), 30);
+}
+
 ensureFeedbackData();
 
 const feedbackInsertIndex = navItems.findIndex((item) => item.id === "consume");
@@ -616,7 +625,7 @@ if (typeof renderDataCenter === "function") {
 
 document.addEventListener("click", (event) => {
   const button = event.target.closest("[data-feedback-lesson]");
-  if (button) renderFeedbackDialog(button.dataset.feedbackLesson);
+  if (button) openFeedbackDialogForLesson(button.dataset.feedbackLesson);
 
   const performanceButton = event.target.closest("[data-feedback-bulk-performance]");
   if (performanceButton) {

@@ -216,7 +216,7 @@ document.addEventListener("click", (event) => {
   const feedbackButton = event.target.closest("[data-closure-feedback]");
   if (feedbackButton) {
     if (attendanceDialog.open) attendanceDialog.close();
-    renderFeedbackDialog(feedbackButton.dataset.closureFeedback);
+    openFeedbackDialogForLesson(feedbackButton.dataset.closureFeedback);
   }
 
   const goButton = event.target.closest("[data-closure-go]");

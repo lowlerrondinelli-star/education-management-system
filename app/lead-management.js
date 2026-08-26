@@ -5,27 +5,75 @@ const leadSources = ["转介绍", "入学测评", "抖音直连", "小红书直�
 const leadStyle = document.createElement("style");
 leadStyle.textContent = `
   html,body{overflow-x:hidden}
-  .lead-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(330px,.38fr);gap:14px}
-  .lead-card{border:1px solid var(--line);border-radius:8px;background:#fff;padding:12px;display:grid;gap:8px}
+  .lead-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(330px,.38fr);gap:14px;min-width:0}
+  .lead-card{border:1px solid var(--line);border-radius:8px;background:#fff;padding:12px;display:grid;gap:8px;min-width:0}
   .lead-card.hot{border-color:#f2b8a2;background:#fff7f2}
   .lead-actions{display:flex;gap:8px;flex-wrap:wrap}
   .lead-note{line-height:1.55;white-space:normal}
   .lead-funnel{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
   .lead-funnel .metric{min-height:88px}
   @media (max-width:1180px){.lead-funnel{grid-template-columns:repeat(3,minmax(0,1fr))}}
-  @media (max-width:1040px){.lead-layout{grid-template-columns:1fr}}
+  @media (max-width:1040px){.lead-layout{grid-template-columns:minmax(0,1fr)}}
   @media (max-width:650px){.lead-funnel{grid-template-columns:repeat(2,minmax(0,1fr))}.lead-actions .small-button{width:100%}}
 `;
 document.head.appendChild(leadStyle);
 
 function leadToday() {
-  return new Date().toISOString().slice(0, 10);
+  return typeof todayIsoDate === "function" ? todayIsoDate() : localLeadDate(new Date());
+}
+
+function localLeadDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function leadDateOffset(offset) {
-  const date = new Date();
+  const date = new Date(`${leadToday()}T00:00:00`);
   date.setDate(date.getDate() + offset);
-  return date.toISOString().slice(0, 10);
+  return localLeadDate(date);
+}
+
+function nextLeadWeekday(weekday) {
+  const date = new Date(`${leadToday()}T00:00:00`);
+  const offset = (weekday - date.getDay() + 7) % 7 || 7;
+  date.setDate(date.getDate() + offset);
+  return localLeadDate(date);
+}
+
+function leadFollowUpDatePresets() {
+  return {
+    today: { label: `今天 ${leadToday()}`, date: leadToday() },
+    tomorrow: { label: `明天 ${leadDateOffset(1)}`, date: leadDateOffset(1) },
+    threeDays: { label: `三天后 ${leadDateOffset(3)}`, date: leadDateOffset(3) },
+    week: { label: `一周后 ${leadDateOffset(7)}`, date: leadDateOffset(7) },
+    nextMonday: { label: `下周一 ${nextLeadWeekday(1)}`, date: nextLeadWeekday(1) },
+    custom: { label: "自定义日期", date: "" }
+  };
+}
+
+function leadTrialDatePresets() {
+  return {
+    tomorrow: { label: `明天 ${leadDateOffset(1)}`, date: leadDateOffset(1) },
+    threeDays: { label: `三天后 ${leadDateOffset(3)}`, date: leadDateOffset(3) },
+    saturday: { label: `最近周六 ${nextLeadWeekday(6)}`, date: nextLeadWeekday(6) },
+    week: { label: `一周后 ${leadDateOffset(7)}`, date: leadDateOffset(7) },
+    nextMonday: { label: `下周一 ${nextLeadWeekday(1)}`, date: nextLeadWeekday(1) },
+    custom: { label: "自定义日期", date: "" }
+  };
+}
+
+function leadDatePresetOptions(presets, selectedValue) {
+  return Object.entries(presets)
+    .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function applyLeadDatePreset(form, presetName, inputName, presets) {
+  const preset = presets[form?.elements?.[presetName]?.value];
+  if (!preset?.date) return;
+  if (form.elements[inputName]) form.elements[inputName].value = preset.date;
 }
 
 function ensureLeadData() {
@@ -225,6 +273,7 @@ function renderLeadForm() {
         <label>负责人<select name="owner" required>${typeof ownerChoiceOptions === "function" ? ownerChoiceOptions("前台老师") : "<option>前台老师</option>"}</select></label>
         <label>意向课程<select name="course" required>${typeof courseOptions === "function" ? courseOptions("初二小组课/一对一") : "<option>数学同步课</option>"}</select></label>
         <label>意向度<select name="intention">${leadIntentions.map((item) => `<option>${escapeHtml(item)}</option>`).join("")}</select></label>
+        <label>跟进日期模板<select name="nextFollowUpPreset">${leadDatePresetOptions(leadFollowUpDatePresets(), "tomorrow")}</select></label>
         <label>下次跟进<input name="nextFollowUp" type="date" value="${leadDateOffset(1)}" required /></label>
       </div>
       <label class="stack-item">备注<select name="note">${typeof leadNoteOptions === "function" ? leadNoteOptions("家长想先试听，关注价格和上课时间。") : "<option>家长想先试听，关注价格和上课时间。</option>"}</select></label>
@@ -323,6 +372,7 @@ function renderLeadTrialDialog(id) {
       </div>
       <input type="hidden" name="leadId" value="${escapeHtml(lead.id)}" />
       <div class="form-grid">
+        <label>试听日期模板<select name="trialDatePreset">${leadDatePresetOptions(leadTrialDatePresets(), "tomorrow")}</select></label>
         <label>试听日期<input name="date" type="date" value="${leadDateOffset(1)}" required /></label>
         <label>试听时间段<select name="timeSlot">${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions("18:30-19:30") : "<option value=\"18:30-19:30\">试听 18:30-19:30</option>"}</select></label>
         <label>开始时间<input name="startTime" type="time" value="${start}" required /></label>
@@ -524,6 +574,16 @@ document.addEventListener("click", (event) => {
 
   const lostButton = event.target.closest("[data-lead-lost]");
   if (lostButton) updateLeadStatus(lostButton.dataset.leadLost, "流失", "暂不考虑");
+});
+
+document.addEventListener("change", (event) => {
+  if (event.target.name === "nextFollowUpPreset" && event.target.closest("#leadForm")) {
+    applyLeadDatePreset(event.target.form, "nextFollowUpPreset", "nextFollowUp", leadFollowUpDatePresets());
+  }
+
+  if (event.target.name === "trialDatePreset" && event.target.closest("#leadTrialForm")) {
+    applyLeadDatePreset(event.target.form, "trialDatePreset", "date", leadTrialDatePresets());
+  }
 });
 
 saveState();

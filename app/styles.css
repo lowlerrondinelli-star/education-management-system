@@ -548,6 +548,7 @@ tr:hover td {
 .stack-list {
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .stack-item {
@@ -753,7 +754,9 @@ tr:hover td {
   background: #fff;
   padding: 14px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
+  min-width: 0;
 }
 
 .master-card h4 {
@@ -762,7 +765,7 @@ tr:hover td {
 }
 
 .master-card .operation-grid {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .master-card .primary-action {
@@ -845,11 +848,15 @@ tr:hover td {
   line-height: 1.55;
 }
 
-.form-grid input {
+.form-grid input,
+.form-grid select {
   min-height: 40px;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0 10px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 1050px) {

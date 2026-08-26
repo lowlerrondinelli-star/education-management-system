@@ -59,6 +59,16 @@ const cleanUiSupportPanelMeta = {
   ],
   followUp: [
     { key: "records", selector: ".follow-records-panel", label: "跟进记录", hint: "查看续费回访和处理结果" }
+  ],
+  data: [
+    { key: "import", selector: ".import-panel", label: "CSV 导入", hint: "选择模板和导入文件" },
+    { key: "readiness", selector: ".import-readiness-panel", label: "导入准备", hint: "检查依赖资料和校验点" },
+    { key: "quality", selector: ".data-quality-panel", label: "数据体检", hint: "查看缺字段欠费和冲突提醒" }
+  ],
+  templates: [
+    { key: "fields", selector: ".template-field-index", label: "字段总览", hint: "跨 Excel 模板查看字段" },
+    { key: "cards", selector: ".template-card-panel", label: "字段卡片", hint: "按模板查看必填字段" },
+    { key: "local", selector: ".local-template-panel", label: "本地模板", hint: "查看电脑模板和导入顺序" }
   ]
 };
 
@@ -71,7 +81,9 @@ const cleanUiSupportGroupMeta = {
   leaves: { title: "请假辅助" },
   feedback: { title: "反馈辅助" },
   leads: { title: "招生辅助" },
-  followUp: { title: "续费辅助" }
+  followUp: { title: "续费辅助" },
+  data: { title: "数据辅助" },
+  templates: { title: "模板辅助" }
 };
 
 function cleanUiViewKey() {

@@ -487,7 +487,7 @@ function renderDataPreviewPanel(configs) {
   </tr>`);
 
   return `
-    <section class="section">
+    <section class="section data-preview-panel">
       <div class="section-head">
         <div>
           <h3>全量数据表</h3>
@@ -551,7 +551,7 @@ function renderDataQualityPanel(configs) {
   ];
 
   return `
-    <section class="section">
+    <section class="section data-quality-panel">
       <div class="section-head">
         <div>
           <h3>数据体检</h3>

@@ -248,7 +248,7 @@ renderTemplates = function renderTemplatesWithChecklist() {
         ${table(["模板", "业务类型", "字段数", "必填", "关键校验", "字段示例", "导入前动作"], renderTemplateRows(visibleTemplates))}
       </div>
     </section>
-    <section class="section">
+    <section class="section template-card-panel">
       <div class="section-head compact-head">
         <h3>字段卡片</h3>
         <span class="muted">星号字段为必填项，可配合上方表格逐项核对。</span>

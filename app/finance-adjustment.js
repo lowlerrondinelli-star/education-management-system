@@ -94,6 +94,51 @@ function renderFinanceAdjustmentSummary() {
   </div>`;
 }
 
+function financeAdjustmentPlanPresets(kind, order) {
+  const paid = Number(order.paid || 0);
+  const remaining = orderRemainingHours(order);
+  const refundSmall = Math.min(paid, 500);
+  const hoursSmall = Math.min(remaining, 1);
+  const presets = {
+    refund: {
+      partialRefund: { label: "部分退费扣课", amount: refundSmall, hours: hoursSmall, method: "微信", reason: "家长退费，扣减剩余课时" },
+      fullRefund: { label: "全额退费清课", amount: paid, hours: remaining, method: "银行转账", reason: "家长退费，扣减剩余课时" },
+      transferRefund: { label: "转班退差额", amount: refundSmall, hours: 0, method: "银行转账", reason: "家长转班/停课，按协议处理" }
+    },
+    hours: {
+      giftHours: { label: "赠课补录 +2", amount: 0, hours: 2, method: "线下处理", reason: "赠课补录，增加可用课时" },
+      deductOne: { label: "误差扣减 -1", amount: 0, hours: -Math.min(remaining, 1), method: "线下处理", reason: "消课核对异常，修正剩余课时" },
+      fixPositive: { label: "人工补增 +1", amount: 0, hours: 1, method: "线下处理", reason: "人工课时调整" },
+      fixNegative: { label: "人工扣减 -0.5", amount: 0, hours: -Math.min(remaining, 0.5), method: "线下处理", reason: "人工课时调整" }
+    },
+    void: {
+      noLessonVoid: { label: "未消课订单作废", amount: paid, hours: remaining, method: "线下处理", reason: "误建订单，未开始上课，作废处理" },
+      duplicateVoid: { label: "重复订单作废", amount: paid, hours: remaining, method: "线下处理", reason: "报名信息录入错误，需财务调整" }
+    }
+  };
+  return presets[kind] || presets.refund;
+}
+
+function financeAdjustmentPlanOptions(kind, order, selectedValue) {
+  return Object.entries(financeAdjustmentPlanPresets(kind, order))
+    .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function applyFinanceAdjustmentPlan(form, order) {
+  if (!form || !order) return;
+  const plan = financeAdjustmentPlanPresets(form.dataset.kind, order)[form.elements.adjustPlan?.value];
+  if (!plan) return;
+  if (form.elements.amount) form.elements.amount.value = plan.amount;
+  if (form.elements.hours) form.elements.hours.value = plan.hours;
+  if (form.elements.method) {
+    form.elements.method.innerHTML = typeof paymentMethodOptions === "function" ? paymentMethodOptions(plan.method) : ["微信", "支付宝", "银行转账", "现金", "线下处理"].map((item) => `<option ${item === plan.method ? "selected" : ""}>${escapeHtml(item)}</option>`).join("");
+  }
+  if (form.elements.reason) {
+    form.elements.reason.innerHTML = typeof financeReasonOptions === "function" ? financeReasonOptions(form.dataset.kind, plan.reason) : `<option>${escapeHtml(plan.reason)}</option>`;
+  }
+}
+
 function injectFinanceOrderControls() {
   if (currentView !== "orders") return;
   const rows = appContent.querySelectorAll("[data-pay-order]");
@@ -140,6 +185,8 @@ function renderFinanceAdjustDialog(kind, orderId) {
   const isRefund = kind === "refund";
   const isHours = kind === "hours";
   const isVoid = kind === "void";
+  const defaultPlanKey = isVoid ? "noLessonVoid" : isHours ? "giftHours" : "partialRefund";
+  const defaultPlan = financeAdjustmentPlanPresets(kind, order)[defaultPlanKey];
   financeAdjustDialog.innerHTML = `
     <form method="dialog" id="financeAdjustForm" data-kind="${escapeHtml(kind)}" data-order-id="${escapeHtml(order.id)}">
       <div class="dialog-head">
@@ -151,13 +198,14 @@ function renderFinanceAdjustDialog(kind, orderId) {
         <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
       </div>
       <div class="form-grid">
-        <label>金额<input name="amount" type="number" min="0" max="${isRefund || isVoid ? paid : 999999}" step="1" value="${isVoid ? paid : isRefund ? Math.min(paid, 500) : 0}" ${isHours ? "" : "required"} /></label>
-        <label>课时变动<input name="hours" type="number" min="${isHours ? -remaining : 0}" max="${isRefund || isVoid ? remaining : 999}" step="0.5" value="${isVoid ? remaining : isRefund ? Math.min(remaining, 1) : 1}" required /></label>
+        <label>处理模板<select name="adjustPlan">${financeAdjustmentPlanOptions(kind, order, defaultPlanKey)}</select></label>
+        <label>金额<input name="amount" type="number" min="0" max="${isRefund || isVoid ? paid : 999999}" step="1" value="${escapeHtml(defaultPlan.amount)}" ${isHours ? "" : "required"} /></label>
+        <label>课时变动<input name="hours" type="number" min="${isHours ? -remaining : 0}" max="${isRefund || isVoid ? remaining : 999}" step="0.5" value="${escapeHtml(defaultPlan.hours)}" required /></label>
         <label>经办人<select name="operator" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions(order.owner || "前台老师") : `<option>${escapeHtml(order.owner || "前台老师")}</option>`}</select></label>
-        <label>处理方式<select name="method"><option>微信</option><option>支付宝</option><option>银行转账</option><option>现金</option><option>线下处理</option></select></label>
+        <label>处理方式<select name="method">${typeof paymentMethodOptions === "function" ? paymentMethodOptions(defaultPlan.method) : `<option>${escapeHtml(defaultPlan.method)}</option>`}</select></label>
       </div>
       <div class="form-grid" style="grid-template-columns:1fr;">
-        <label>原因备注<select name="reason" required>${typeof financeReasonOptions === "function" ? financeReasonOptions(kind, isVoid ? "误建订单，未开始上课，作废处理" : isRefund ? "家长退费，扣减剩余课时" : "人工课时调整") : `<option>${escapeHtml(isVoid ? "误建订单，未开始上课，作废处理" : isRefund ? "家长退费，扣减剩余课时" : "人工课时调整")}</option>`}</select></label>
+        <label>原因备注<select name="reason" required>${typeof financeReasonOptions === "function" ? financeReasonOptions(kind, defaultPlan.reason) : `<option>${escapeHtml(defaultPlan.reason)}</option>`}</select></label>
       </div>
       <div class="dialog-actions">
         <span class="muted">${escapeHtml(help)}</span>
@@ -433,6 +481,12 @@ document.addEventListener("submit", (event) => {
   if (event.submitter?.value === "cancel") return;
   event.preventDefault();
   saveFinanceAdjustment(event.target);
+});
+
+document.addEventListener("change", (event) => {
+  if (event.target.name !== "adjustPlan" || !event.target.closest("#financeAdjustForm")) return;
+  const form = event.target.form;
+  applyFinanceAdjustmentPlan(form, orderById(form.dataset.orderId));
 });
 
 ensureFinanceAdjustmentData();

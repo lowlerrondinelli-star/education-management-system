@@ -325,6 +325,7 @@ function flattenFollowUpRows() {
   ensureFollowUpData();
   return appState.followUps.map((item) => ({
     id: item.id,
+    studentId: item.studentId || appState.students.find((student) => student.name === item.student)?.id || "",
     student: item.student,
     phone: item.phone,
     type: item.type,

@@ -101,6 +101,17 @@ function searchLessonById(lessonId) {
   return appState.lessons.find((lesson) => lesson.id === lessonId);
 }
 
+function searchStudentByName(name) {
+  return appState.students.find((student) => student.name === name);
+}
+
+function searchLeaveAction(item) {
+  if (item.status === "待审批") return `<button class="small-button" type="button" data-leave-approve="${escapeHtml(item.id)}">批准</button>`;
+  if (["待补课", "已批准"].includes(item.status)) return `<button class="small-button" type="button" data-leave-makeup="${escapeHtml(item.id)}">安排补课</button>`;
+  if (item.status === "已安排补课") return `<button class="small-button" type="button" data-leave-complete="${escapeHtml(item.id)}">完成</button>`;
+  return `<button class="small-button" type="button" data-go="leaves">查看请假</button>`;
+}
+
 function resultCard({ type, title, meta, tags = [], actions = [] }, keyword) {
   return `<article class="search-result-card">
     <div class="global-search-summary">
@@ -141,7 +152,14 @@ function buildOrderSearchResults(keyword) {
         title: `${order.student} ${order.id}`,
         meta: `${order.course} / ${order.className} / 有效期 ${order.expireAt}`,
         tags: [tag(`余额 ${remaining}`, remaining <= 3 ? "amber" : "green"), Number(order.debt || 0) > 0 ? tag(`欠费 ${money(order.debt)}`, "red") : tag("已结清", "green")],
-        actions: [`<button class="small-button" type="button" data-go="orders">查看订单</button>`]
+        actions: [
+          Number(order.debt || 0) > 0
+            ? `<button class="small-button" type="button" data-pay-order="${escapeHtml(order.id)}">补缴</button>`
+            : `<button class="small-button" type="button" data-go="orders">查看订单</button>`,
+          remaining > 0 && remaining <= 3 && searchStudentByName(order.student)
+            ? `<button class="small-button" type="button" data-student-follow="${escapeHtml(searchStudentByName(order.student).id)}">续费跟进</button>`
+            : ""
+        ].filter(Boolean)
       };
     });
 }
@@ -187,7 +205,11 @@ function buildFollowUpSearchResults(keyword) {
       title: `${item.student} ${item.type}`,
       meta: `${item.owner} / ${item.status} / 下次 ${item.dueDate || "-"}`,
       tags: [tag(item.priority || "普通", item.priority === "高" ? "red" : item.status === "待跟进" ? "amber" : "green")],
-      actions: [`<button class="small-button" type="button" data-go="followUp">查看跟进</button>`]
+      actions: [
+        item.studentId || searchStudentByName(item.student)?.id
+          ? `<button class="small-button" type="button" data-student-follow="${escapeHtml(item.studentId || searchStudentByName(item.student)?.id)}">打开跟进</button>`
+          : `<button class="small-button" type="button" data-go="followUp">查看跟进</button>`
+      ]
     }));
 }
 
@@ -237,7 +259,7 @@ function buildLeaveSearchResults(keyword) {
       title: `${item.student} ${item.status}`,
       meta: `${item.lessonDate || "-"} ${item.lessonTime || ""} / ${item.target || "-"} / ${item.reason || item.makeupPlan || "-"}`,
       tags: [tag(item.leaveType || "请假", ""), tag(item.status || "待处理", statusTone(item.status))],
-      actions: [`<button class="small-button" type="button" data-go="leaves">查看请假</button>`]
+      actions: [searchLeaveAction(item), `<button class="small-button" type="button" data-go="leaves">请假台</button>`]
     }));
 }
 

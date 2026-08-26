@@ -316,6 +316,58 @@ function applyCourseTemplate(form, templateKey = "juniorMath") {
   if (form.elements.price) form.elements.price.value = preset.price;
 }
 
+function teacherTemplatePresets() {
+  return {
+    juniorMathTeacher: { label: "初中数学任课老师", name: "数学-李老师", subjects: "数学", grades: "初一、初二、初三", role: "任课老师", weeklyHours: 24 },
+    physicsTeacher: { label: "高中物理任课老师", name: "物理-陈老师", subjects: "物理", grades: "高一、高二", role: "任课老师", weeklyHours: 22 },
+    englishTeacher: { label: "小学英语老师", name: "英语-王老师", subjects: "英语", grades: "五年级、六年级", role: "任课老师", weeklyHours: 20 },
+    assistant: { label: "小班助教", name: "助教-刘老师", subjects: "全科托管", grades: "小初", role: "助教", weeklyHours: 28 },
+    headTeacher: { label: "班主任/学管师", name: "学管-周老师", subjects: "全科托管", grades: "初中", role: "班主任", weeklyHours: 30 }
+  };
+}
+
+function teacherTemplateOptions(selectedValue = "juniorMathTeacher") {
+  return Object.entries(teacherTemplatePresets())
+    .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function applyTeacherTemplate(form, templateKey = "juniorMathTeacher") {
+  if (!form) return;
+  const preset = teacherTemplatePresets()[templateKey] || teacherTemplatePresets().juniorMathTeacher;
+  if (form.elements.name) form.elements.name.value = preset.name;
+  if (form.elements.subjects) form.elements.subjects.innerHTML = typeof staffSubjectOptions === "function" ? staffSubjectOptions(preset.subjects) : `<option>${escapeHtml(preset.subjects)}</option>`;
+  if (form.elements.grades) form.elements.grades.innerHTML = typeof staffGradeOptions === "function" ? staffGradeOptions(preset.grades) : `<option>${escapeHtml(preset.grades)}</option>`;
+  if (form.elements.role) form.elements.role.innerHTML = courseSelectOptions(["任课老师", "助教", "班主任"], preset.role);
+  if (form.elements.weeklyHours) form.elements.weeklyHours.value = preset.weeklyHours;
+}
+
+function roomTemplatePresets() {
+  return {
+    smallClass: { label: "标准小班教室", name: "东楼202室", campus: "主校区", capacity: 12, type: "线下教室", note: "初中小班优先" },
+    seniorScience: { label: "高中理科教室", name: "西楼301室", campus: "主校区", capacity: 16, type: "线下教室", note: "高中理科" },
+    oneToOneRoom: { label: "一对一教室", name: "一对一教室A", campus: "主校区", capacity: 4, type: "线下教室", note: "一对一教室" },
+    onlineRoom: { label: "线上直播教室", name: "线上直播间A", campus: "线上", capacity: 80, type: "线上教室", note: "直播课" },
+    studyRoom: { label: "自习托管教室", name: "自习室A", campus: "主校区", capacity: 24, type: "自习室", note: "自习托管" }
+  };
+}
+
+function roomTemplateOptions(selectedValue = "smallClass") {
+  return Object.entries(roomTemplatePresets())
+    .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function applyRoomTemplate(form, templateKey = "smallClass") {
+  if (!form) return;
+  const preset = roomTemplatePresets()[templateKey] || roomTemplatePresets().smallClass;
+  if (form.elements.name) form.elements.name.value = preset.name;
+  if (form.elements.campus) form.elements.campus.innerHTML = typeof campusChoiceOptions === "function" ? campusChoiceOptions(preset.campus) : `<option>${escapeHtml(preset.campus)}</option>`;
+  if (form.elements.capacity) form.elements.capacity.value = preset.capacity;
+  if (form.elements.type) form.elements.type.innerHTML = courseSelectOptions(["线下教室", "线上教室", "自习室"], preset.type);
+  if (form.elements.note) form.elements.note.innerHTML = typeof roomNoteOptions === "function" ? roomNoteOptions(preset.note) : `<option>${escapeHtml(preset.note)}</option>`;
+}
+
 function renderMasterData() {
   const activeTeachers = appState.teachers.filter((item) => item.status !== "离职").length;
   const availableRooms = appState.rooms.filter((item) => item.status === "可排课").length;
@@ -365,31 +417,35 @@ function renderCourseForm() {
 }
 
 function renderTeacherForm() {
+  const defaults = teacherTemplatePresets().juniorMathTeacher;
   return `
     <form class="master-card" id="teacherForm">
       <h4>新增教师</h4>
       <div class="operation-grid">
-        <label>教师姓名<input name="name" required placeholder="例如 数学-李老师" /></label>
+        <label>教师岗位模板<select name="template">${teacherTemplateOptions("juniorMathTeacher")}</select></label>
+        <label>教师姓名<input name="name" required value="${escapeHtml(defaults.name)}" placeholder="例如 数学-李老师" /></label>
         <label>手机号<input name="phone" maxlength="11" /></label>
-        <label>科目<select name="subjects" required>${staffSubjectOptions("数学")}</select></label>
-        <label>年级<select name="grades" required>${staffGradeOptions("初中")}</select></label>
-        <label>角色<select name="role"><option>任课老师</option><option>助教</option><option>班主任</option></select></label>
-        <label>每周容量<input name="weeklyHours" type="number" min="0" value="20" /></label>
+        <label>科目<select name="subjects" required>${staffSubjectOptions(defaults.subjects)}</select></label>
+        <label>年级<select name="grades" required>${staffGradeOptions(defaults.grades)}</select></label>
+        <label>角色<select name="role">${courseSelectOptions(["任课老师", "助教", "班主任"], defaults.role)}</select></label>
+        <label>每周容量<input name="weeklyHours" type="number" min="0" value="${escapeHtml(defaults.weeklyHours)}" /></label>
       </div>
       <button class="primary-action" type="submit">保存教师</button>
     </form>`;
 }
 
 function renderRoomForm() {
+  const defaults = roomTemplatePresets().smallClass;
   return `
     <form class="master-card" id="roomForm">
       <h4>新增教室</h4>
       <div class="operation-grid">
-        <label>教室名称<input name="name" required placeholder="例如 东楼202室" /></label>
-        <label>校区<select name="campus" required>${campusChoiceOptions("主校区")}</select></label>
-        <label>容量<input name="capacity" type="number" min="1" value="12" /></label>
-        <label>教室类型<select name="type"><option>线下教室</option><option>线上教室</option><option>自习室</option></select></label>
-        <label>备注<select name="note">${roomNoteOptions("初中小班优先")}</select></label>
+        <label>教室模板<select name="template">${roomTemplateOptions("smallClass")}</select></label>
+        <label>教室名称<input name="name" required value="${escapeHtml(defaults.name)}" placeholder="例如 东楼202室" /></label>
+        <label>校区<select name="campus" required>${campusChoiceOptions(defaults.campus)}</select></label>
+        <label>容量<input name="capacity" type="number" min="1" value="${escapeHtml(defaults.capacity)}" /></label>
+        <label>教室类型<select name="type">${courseSelectOptions(["线下教室", "线上教室", "自习室"], defaults.type)}</select></label>
+        <label>备注<select name="note">${roomNoteOptions(defaults.note)}</select></label>
       </div>
       <button class="primary-action" type="submit">保存教室</button>
     </form>`;
@@ -526,6 +582,16 @@ document.addEventListener("submit", (event) => {
 document.addEventListener("change", (event) => {
   if (event.target.name === "template" && event.target.closest("#courseForm")) {
     applyCourseTemplate(event.target.form, event.target.value);
+    return;
+  }
+
+  if (event.target.name === "template" && event.target.closest("#teacherForm")) {
+    applyTeacherTemplate(event.target.form, event.target.value);
+    return;
+  }
+
+  if (event.target.name === "template" && event.target.closest("#roomForm")) {
+    applyRoomTemplate(event.target.form, event.target.value);
     return;
   }
 

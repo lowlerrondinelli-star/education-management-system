@@ -464,6 +464,16 @@ button {
   min-width: 180px;
 }
 
+.clean-action-title strong {
+  font-size: 15px;
+}
+
+.clean-action-kicker {
+  color: var(--blue-deep);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .clean-action-buttons {
   display: flex;
   gap: 8px;
@@ -482,6 +492,7 @@ button {
   gap: 3px;
   text-align: left;
   min-width: 134px;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.04);
 }
 
 .clean-action-button strong {
@@ -497,6 +508,7 @@ button {
   border-color: #93b4ff;
   background: #eef4ff;
   color: var(--blue-deep);
+  box-shadow: inset 3px 0 0 var(--blue);
 }
 
 .clean-action-close {

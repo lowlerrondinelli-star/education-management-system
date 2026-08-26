@@ -31,6 +31,16 @@ function cleanUiPanelKey(panel, index) {
   return panel.id || `operation-panel-${index}`;
 }
 
+function cleanUiActivePanel() {
+  return appContent.querySelector('.operation-panel[aria-expanded="true"], form.master-card[aria-expanded="true"], form.schedule-batch[aria-expanded="true"]');
+}
+
+function cleanUiFocusActivePanel() {
+  const panel = cleanUiActivePanel();
+  if (!panel) return;
+  panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
 function cleanUiPanelsInBody(body) {
   const directPanels = [...body.children].filter((child) => child.matches?.(".operation-panel, form.master-card, form.schedule-batch"));
   const nestedPanels = [
@@ -66,9 +76,10 @@ function cleanUiActionDock(panels) {
 
   return `
     <div class="clean-action-dock">
-      <div>
+      <div class="clean-action-title">
+        <span class="clean-action-kicker">功能按钮</span>
         <strong>常用操作</strong>
-        <span class="muted">先看数据，需要办理时再打开表单。</span>
+        <span class="muted">${activeKey ? "正在办理，完成后可收起。" : `已收起 ${panels.length} 个办理入口。`}</span>
       </div>
       <div class="clean-action-buttons">
         ${buttons}
@@ -111,6 +122,7 @@ document.addEventListener("click", (event) => {
   if (openButton) {
     cleanUiActivePanels[cleanUiViewKey()] = openButton.dataset.cleanPanelOpen;
     renderView();
+    setTimeout(cleanUiFocusActivePanel, 30);
     return;
   }
 

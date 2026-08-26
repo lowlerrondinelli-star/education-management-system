@@ -31,13 +31,21 @@ const cleanUiSupportPanelMeta = {
   classes: [
     { key: "operations", selector: ".class-ops-panel", label: "班级运营", hint: "查看容量欠费和补排动作" },
     { key: "advisor", selector: ".class-advisor-panel", label: "智能分班", hint: "查看推荐班级和分班卡点" }
+  ],
+  orders: [
+    { key: "renewal", selector: ".renewal-board", label: "续费欠费", hint: "查看催缴续费沟通对象" },
+    { key: "daily", selector: ".payment-daily-panel", label: "收款日报", hint: "查看当日收款和经办人" },
+    { key: "risk", selector: ".order-risk-panel", label: "订单风险", hint: "查看欠费课时和有效期" },
+    { key: "payments", selector: ".payment-list-panel", label: "收款对账", hint: "查看收款退费流水" },
+    { key: "hours", selector: ".hour-audit-panel", label: "课时核对", hint: "查看余额差异和欠费" }
   ]
 };
 
 const cleanUiSupportGroupMeta = {
   schedule: { title: "课表辅助" },
   students: { title: "学员辅助" },
-  classes: { title: "班级辅助" }
+  classes: { title: "班级辅助" },
+  orders: { title: "订单辅助" }
 };
 
 function cleanUiViewKey() {

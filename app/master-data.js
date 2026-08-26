@@ -227,6 +227,95 @@ function masterOptions(items, key, selectedValue = "") {
     .join("");
 }
 
+function courseTemplatePresets() {
+  return {
+    juniorMath: {
+      label: "初中数学同步小班",
+      name: "初一数学同步班",
+      subject: "数学",
+      grade: "初一年级",
+      type: "普通课程",
+      mode: "线下",
+      hours: 20,
+      price: 2980
+    },
+    juniorCombo: {
+      label: "初中小组/一对一组合",
+      name: "初二数学小组/一对一",
+      subject: "数学",
+      grade: "初二年级",
+      type: "组合课程",
+      mode: "线下",
+      hours: 30,
+      price: 3600
+    },
+    seniorPhysics: {
+      label: "高中物理提高班",
+      name: "高一物理提高班",
+      subject: "物理",
+      grade: "高一年级",
+      type: "普通课程",
+      mode: "线下",
+      hours: 24,
+      price: 4800
+    },
+    oneToOne: {
+      label: "一对一精品课",
+      name: "初三数学一对一",
+      subject: "数学",
+      grade: "初三年级",
+      type: "一对一",
+      mode: "线下",
+      hours: 10,
+      price: 3000
+    },
+    primaryEnglish: {
+      label: "小学英语小班",
+      name: "五六年级英语小班",
+      subject: "英语",
+      grade: "六年级",
+      type: "普通课程",
+      mode: "线上",
+      hours: 24,
+      price: 2880
+    },
+    sprint: {
+      label: "考前冲刺班",
+      name: "初三数学冲刺班",
+      subject: "数学",
+      grade: "初三年级",
+      type: "普通课程",
+      mode: "线下",
+      hours: 12,
+      price: 1980
+    }
+  };
+}
+
+function courseTemplateOptions(selectedValue = "juniorMath") {
+  return Object.entries(courseTemplatePresets())
+    .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function courseSelectOptions(values, selectedValue) {
+  return values
+    .map((value) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(value)}</option>`)
+    .join("");
+}
+
+function applyCourseTemplate(form, templateKey = "juniorMath") {
+  if (!form) return;
+  const preset = courseTemplatePresets()[templateKey] || courseTemplatePresets().juniorMath;
+  if (form.elements.name) form.elements.name.value = preset.name;
+  if (form.elements.subject) form.elements.subject.innerHTML = typeof subjectChoiceOptions === "function" ? subjectChoiceOptions(preset.subject) : `<option>${escapeHtml(preset.subject)}</option>`;
+  if (form.elements.grade) form.elements.grade.innerHTML = typeof gradeChoiceOptions === "function" ? gradeChoiceOptions(preset.grade) : `<option>${escapeHtml(preset.grade)}</option>`;
+  if (form.elements.type) form.elements.type.innerHTML = courseSelectOptions(["普通课程", "组合课程", "一对一"], preset.type);
+  if (form.elements.mode) form.elements.mode.innerHTML = courseSelectOptions(["线下", "线上", "混合"], preset.mode);
+  if (form.elements.hours) form.elements.hours.value = preset.hours;
+  if (form.elements.price) form.elements.price.value = preset.price;
+}
+
 function renderMasterData() {
   const activeTeachers = appState.teachers.filter((item) => item.status !== "离职").length;
   const availableRooms = appState.rooms.filter((item) => item.status === "可排课").length;
@@ -257,17 +346,19 @@ function renderMasterData() {
 }
 
 function renderCourseForm() {
+  const defaults = courseTemplatePresets().juniorMath;
   return `
     <form class="master-card" id="courseForm">
       <h4>新增课程</h4>
       <div class="operation-grid">
-        <label>课程名称<input name="name" required placeholder="例如 初一数学同步班" /></label>
-        <label>科目<select name="subject" required>${subjectChoiceOptions("数学")}</select></label>
-        <label>年级<select name="grade" required>${gradeChoiceOptions("初一年级")}</select></label>
-        <label>课程类型<select name="type"><option>普通课程</option><option>组合课程</option><option>一对一</option></select></label>
-        <label>授课方式<select name="mode"><option>线下</option><option>线上</option><option>混合</option></select></label>
-        <label>标准课时<input name="hours" type="number" min="1" value="20" required /></label>
-        <label>标准价<input name="price" type="number" min="0" value="0" /></label>
+        <label>课程报价模板<select name="template">${courseTemplateOptions("juniorMath")}</select></label>
+        <label>课程名称<input name="name" required value="${escapeHtml(defaults.name)}" placeholder="例如 初一数学同步班" /></label>
+        <label>科目<select name="subject" required>${subjectChoiceOptions(defaults.subject)}</select></label>
+        <label>年级<select name="grade" required>${gradeChoiceOptions(defaults.grade)}</select></label>
+        <label>课程类型<select name="type">${courseSelectOptions(["普通课程", "组合课程", "一对一"], defaults.type)}</select></label>
+        <label>授课方式<select name="mode">${courseSelectOptions(["线下", "线上", "混合"], defaults.mode)}</select></label>
+        <label>标准课时<input name="hours" type="number" min="1" value="${escapeHtml(defaults.hours)}" required /></label>
+        <label>标准价<input name="price" type="number" min="0" value="${escapeHtml(defaults.price)}" /></label>
       </div>
       <button class="primary-action" type="submit">保存课程</button>
     </form>`;
@@ -433,6 +524,11 @@ document.addEventListener("submit", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  if (event.target.name === "template" && event.target.closest("#courseForm")) {
+    applyCourseTemplate(event.target.form, event.target.value);
+    return;
+  }
+
   if (event.target.id !== "lessonTargetSelect") return;
   const classItem = getClass(event.target.value);
   if (!classItem) return;

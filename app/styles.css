@@ -442,6 +442,67 @@ button {
   gap: 4px;
 }
 
+.clean-panel-hidden {
+  display: none;
+}
+
+.clean-action-dock {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 12px;
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.clean-action-dock > div:first-child {
+  display: grid;
+  gap: 4px;
+  min-width: 180px;
+}
+
+.clean-action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.clean-action-button {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  padding: 7px 10px;
+  display: grid;
+  gap: 3px;
+  text-align: left;
+  min-width: 134px;
+}
+
+.clean-action-button strong {
+  font-size: 14px;
+}
+
+.clean-action-button span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.clean-action-button.active {
+  border-color: #93b4ff;
+  background: #eef4ff;
+  color: var(--blue-deep);
+}
+
+.clean-action-close {
+  align-self: stretch;
+}
+
 .operation-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(150px, 1fr));
@@ -919,6 +980,15 @@ tr:hover td {
   .dashboard-actions {
     justify-content: flex-start;
   }
+
+  .clean-action-dock {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .clean-action-buttons {
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 650px) {
@@ -968,7 +1038,10 @@ tr:hover td {
   .dashboard-actions .primary-action,
   .dashboard-actions .small-button,
   .action-row,
-  .action-row .small-button {
+  .action-row .small-button,
+  .clean-action-buttons,
+  .clean-action-button,
+  .clean-action-close {
     width: 100%;
   }
 

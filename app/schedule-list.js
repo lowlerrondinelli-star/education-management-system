@@ -220,6 +220,7 @@ function renderScheduleListRows(lessons) {
       <td>
         <div class="schedule-list-actions">
           <button class="small-button" type="button" data-attendance-lesson="${escapeHtml(lesson.id)}" ${canceled ? "disabled" : ""}>点名</button>
+          <button class="small-button" type="button" data-lesson-leave="${escapeHtml(lesson.id)}" ${done || canceled ? "disabled" : ""}>请假</button>
           <button class="small-button" type="button" data-feedback-lesson="${escapeHtml(lesson.id)}">反馈</button>
           <button class="small-button" type="button" data-schedule-adjust="reschedule" data-lesson-id="${escapeHtml(lesson.id)}" ${done || canceled ? "disabled" : ""}>调课</button>
         </div>

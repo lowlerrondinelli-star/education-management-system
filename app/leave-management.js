@@ -222,7 +222,8 @@ function activeDuplicateLeave(studentId, lessonId) {
 }
 
 function renderLeaveQuickForm() {
-  const defaultLesson = leaveSortedLessons()[0];
+  const selectedLesson = leaveSortedLessons().find((lesson) => lesson.id === selectedLessonForLeave);
+  const defaultLesson = selectedLesson || leaveSortedLessons()[0];
   const defaultStudent = leaveStudentsForLesson(defaultLesson?.id)[0];
   return `
     <form class="operation-panel" id="leaveRequestForm">
@@ -502,7 +503,7 @@ function injectLeaveShortcuts() {
     if (!lesson || !card || card.querySelector("[data-schedule-leave]")) return;
     const disabled = lesson.status === "已上课" || lesson.status === "已取消";
     const target = card.querySelector(".schedule-adjust-actions") || button.closest(".attendance-actions");
-    target?.insertAdjacentHTML("beforeend", `<button class="small-button leave-shortcut" type="button" data-schedule-leave="${escapeHtml(lesson.id)}" ${disabled ? "disabled" : ""}>请假</button>`);
+    target?.insertAdjacentHTML("beforeend", `<button class="small-button leave-shortcut" type="button" data-lesson-leave="${escapeHtml(lesson.id)}" ${disabled ? "disabled" : ""}>请假</button>`);
   });
 }
 

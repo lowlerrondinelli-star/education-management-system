@@ -30,6 +30,7 @@ let selectedStudentForOrder = "";
 let selectedStudentForClass = "";
 let selectedStudentForFollowUp = "";
 let selectedClassForLesson = "";
+let selectedLessonForLeave = "";
 let operationNotice = null;
 
 const appContent = document.querySelector("#appContent");
@@ -1128,6 +1129,15 @@ function openFollowUpFormForStudent(studentId) {
   setTimeout(() => document.querySelector('[data-clean-panel-open="followUpForm"]')?.click(), 30);
 }
 
+function openLeaveFormForLesson(lessonId) {
+  if (!lessonId) return;
+  selectedLessonForLeave = lessonId;
+  const lesson = appState.lessons.find((item) => item.id === lessonId);
+  setNotice("leaves", `${lesson ? `${lesson.date} ${lesson.time} ${lesson.target}` : "该课节"} 已带入请假登记表单。`, "amber");
+  setView("leaves");
+  setTimeout(() => document.querySelector('[data-clean-panel-open="leaveRequestForm"]')?.click(), 30);
+}
+
 function table(headers, rows) {
   return `
     <div class="table-wrap">
@@ -1956,6 +1966,9 @@ document.addEventListener("click", (event) => {
 
   const followUpShortcut = event.target.closest("[data-student-follow]");
   if (followUpShortcut) openFollowUpFormForStudent(followUpShortcut.dataset.studentFollow);
+
+  const leaveShortcut = event.target.closest("[data-lesson-leave]");
+  if (leaveShortcut) openLeaveFormForLesson(leaveShortcut.dataset.lessonLeave);
 
   const finishButton = event.target.closest("[data-finish-lesson]");
   if (finishButton) finishLesson(finishButton.dataset.finishLesson);

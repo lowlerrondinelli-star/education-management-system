@@ -74,7 +74,8 @@ function addDays(date, days) {
 }
 
 function defaultBatchDates() {
-  const start = dateFromIso("2026-09-07");
+  const startValue = typeof lessonDatePresetValue === "function" ? lessonDatePresetValue("nextMonday") : "2026-09-07";
+  const start = dateFromIso(startValue);
   return {
     start: isoFromDate(start),
     end: isoFromDate(addDays(start, 27))

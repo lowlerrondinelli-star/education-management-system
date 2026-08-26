@@ -345,6 +345,58 @@ function applyLessonTimeSlot(form) {
   if (form.elements.endTime) form.elements.endTime.value = end;
 }
 
+function localLessonDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function lessonToday() {
+  return typeof todayIsoDate === "function" ? todayIsoDate() : localLessonDate(new Date());
+}
+
+function lessonDateOffset(offset) {
+  const date = new Date(`${lessonToday()}T00:00:00`);
+  date.setDate(date.getDate() + offset);
+  return localLessonDate(date);
+}
+
+function nextLessonWeekday(weekday) {
+  const date = new Date(`${lessonToday()}T00:00:00`);
+  const offset = (weekday - date.getDay() + 7) % 7 || 7;
+  date.setDate(date.getDate() + offset);
+  return localLessonDate(date);
+}
+
+function lessonDatePresets() {
+  return {
+    today: { label: `今天 ${lessonToday()}`, date: lessonToday() },
+    tomorrow: { label: `明天 ${lessonDateOffset(1)}`, date: lessonDateOffset(1) },
+    nextMonday: { label: `下周一 ${nextLessonWeekday(1)}`, date: nextLessonWeekday(1) },
+    nextWednesday: { label: `最近周三 ${nextLessonWeekday(3)}`, date: nextLessonWeekday(3) },
+    saturday: { label: `最近周六 ${nextLessonWeekday(6)}`, date: nextLessonWeekday(6) },
+    week: { label: `一周后 ${lessonDateOffset(7)}`, date: lessonDateOffset(7) },
+    custom: { label: "自定义日期", date: "" }
+  };
+}
+
+function lessonDatePresetValue(key = "nextMonday") {
+  return lessonDatePresets()[key]?.date || lessonDateOffset(1);
+}
+
+function lessonDatePresetOptions(selectedValue = "nextMonday") {
+  return Object.entries(lessonDatePresets())
+    .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function applyLessonDatePreset(form) {
+  const preset = lessonDatePresets()[form?.elements?.lessonDatePreset?.value];
+  if (!preset?.date) return;
+  if (form.elements.date) form.elements.date.value = preset.date;
+}
+
 function followUpNoteOptions(selectedValue = "家长约定周五补缴") {
   return choiceOptions(
     [
@@ -997,6 +1049,7 @@ function renderClasses() {
 
 function renderLessonForm() {
   const defaultClass = appState.classes[0] || {};
+  const defaultDate = typeof lessonDatePresetValue === "function" ? lessonDatePresetValue("nextMonday") : "2026-09-07";
   return `
     <form class="operation-panel" id="lessonForm">
       <div>
@@ -1004,7 +1057,9 @@ function renderLessonForm() {
         <span class="muted">保存前会检查同一时间的老师、教室和班级冲突。</span>
       </div>
       <div class="operation-grid">
-        <label>上课日期<input name="date" type="date" value="2026-09-07" required /></label>
+        <label>日期模板<select name="lessonDatePreset">${typeof lessonDatePresetOptions === "function" ? lessonDatePresetOptions("nextMonday") : "<option value=\"custom\">自定义日期</option>"}</select></label>
+        <label>上课日期<input name="date" type="date" value="${escapeHtml(defaultDate)}" required /></label>
+        <label>上课时间段<select name="timeSlot">${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions("18:30-20:00") : "<option value=\"18:30-20:00\">晚一 18:30-20:00</option>"}</select></label>
         <label>开始时间<input name="startTime" type="time" value="18:30" required /></label>
         <label>结束时间<input name="endTime" type="time" value="20:00" required /></label>
         <label>班级/对象<select name="target" required>${classOptions(defaultClass.name)}</select></label>
@@ -1510,6 +1565,10 @@ document.addEventListener("change", (event) => {
 
   if (event.target.name === "timeSlot") {
     applyLessonTimeSlot(event.target.form || event.target.closest("form"));
+  }
+
+  if (event.target.name === "lessonDatePreset" && event.target.closest("#lessonForm")) {
+    applyLessonDatePreset(event.target.form || event.target.closest("form"));
   }
 });
 

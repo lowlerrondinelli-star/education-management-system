@@ -194,6 +194,7 @@ const baseRenderLessonForm = renderLessonForm;
 renderLessonForm = function renderLessonFormWithMasterData() {
   if (!appState.courses?.length || !appState.teachers?.length || !appState.rooms?.length) return baseRenderLessonForm();
   const defaultClass = appState.classes[0] || {};
+  const defaultDate = typeof lessonDatePresetValue === "function" ? lessonDatePresetValue("nextMonday") : "2026-09-07";
   return `
     <form class="operation-panel" id="lessonForm">
       <div>
@@ -201,7 +202,8 @@ renderLessonForm = function renderLessonFormWithMasterData() {
         <span class="muted">教师、教室和科目来自基础资料，保存前会检查同一时间冲突。</span>
       </div>
       <div class="operation-grid">
-        <label>上课日期<input name="date" type="date" value="2026-09-07" required /></label>
+        <label>日期模板<select name="lessonDatePreset">${typeof lessonDatePresetOptions === "function" ? lessonDatePresetOptions("nextMonday") : "<option value=\"custom\">自定义日期</option>"}</select></label>
+        <label>上课日期<input name="date" type="date" value="${escapeHtml(defaultDate)}" required /></label>
         <label>上课时间段<select name="timeSlot" id="lessonTimeSlotSelect">${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions("18:30-20:00") : "<option value=\"18:30-20:00\">晚一 18:30-20:00</option>"}</select></label>
         <label>开始时间<input name="startTime" type="time" value="18:30" required /></label>
         <label>结束时间<input name="endTime" type="time" value="20:00" required /></label>

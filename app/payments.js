@@ -34,6 +34,11 @@ paymentStyle.textContent = `
     line-height: 1.55;
   }
 
+  .order-recommend-hint {
+    grid-column: 1 / -1;
+    line-height: 1.55;
+  }
+
   @media (max-width: 900px) {
     .payment-summary {
       grid-template-columns: 1fr;
@@ -279,11 +284,83 @@ function refreshOrderPackageChoices() {
   applyOrderPackagePreset();
 }
 
+function orderClassOpenSeats(classItem) {
+  if (!classItem) return 0;
+  const currentCount = appState.students.filter((student) => student.className === classItem.name).length;
+  return Math.max(0, Number(classItem.capacity || 0) - currentCount);
+}
+
+function orderRecommendedClass(student) {
+  if (!student) return appState.classes[0] || {};
+  const currentClass = getClass(student.className);
+  if (currentClass) return currentClass;
+  if (typeof assignRecommendedClass === "function") return assignRecommendedClass(student);
+  const course = text(student.course);
+  return (
+    appState.classes
+      .filter((classItem) => orderClassOpenSeats(classItem) > 0)
+      .map((classItem) => ({
+        classItem,
+        score: Number(course && classItem.course === course) * 3 + Number(course && text(classItem.course).includes(course)) * 2
+      }))
+      .sort((left, right) => right.score - left.score || orderClassOpenSeats(right.classItem) - orderClassOpenSeats(left.classItem))[0]?.classItem ||
+    appState.classes[0] ||
+    {}
+  );
+}
+
+function orderRecommendedDefaults(student) {
+  const classItem = orderRecommendedClass(student);
+  const course = classItem?.course || student?.course || "常规课程";
+  const packageKey = Number(student?.debt || 0) > 0 ? "deposit" : "standard";
+  return {
+    className: classItem?.name || "",
+    course,
+    packageKey,
+    classItem
+  };
+}
+
+function orderRecommendationHint(student, defaults = orderRecommendedDefaults(student)) {
+  if (!student) return "请选择学员，系统会按意向课程、目标班级和欠费情况推荐报名默认项。";
+  const reasons = [];
+  if (getClass(student.className)) reasons.push("沿用学员当前班级");
+  else if (defaults.className) reasons.push("按意向课程和容量推荐班级");
+  if (Number(student.debt || 0) > 0) reasons.push("有欠费，默认订金/分期套餐");
+  else reasons.push("默认标准报名套餐");
+  if (defaults.classItem) reasons.push(`剩余 ${orderClassOpenSeats(defaults.classItem)} 个名额`);
+  return `${student.name} 推荐报名 ${defaults.className || "待选班级"} / ${defaults.course}：${reasons.join("，")}。`;
+}
+
+function syncOrderStudentDefaults(form) {
+  const student = appState.students.find((item) => item.id === form?.elements?.studentId?.value);
+  if (!form || !student) return;
+  const defaults = orderRecommendedDefaults(student);
+  if (form.elements.className) {
+    form.elements.className.innerHTML = classOptions(defaults.className);
+    form.elements.className.value = defaults.className;
+  }
+  if (form.elements.course) {
+    form.elements.course.innerHTML = courseOptions(defaults.course);
+    form.elements.course.value = defaults.course;
+  }
+  const packageSelect = form.elements.package;
+  if (packageSelect) {
+    packageSelect.innerHTML = orderPackageOptions(defaults.course, defaults.packageKey);
+    packageSelect.value = defaults.packageKey;
+  }
+  applyOrderPackagePreset();
+  const hint = form.querySelector("[data-order-recommend-hint]");
+  if (hint) hint.textContent = orderRecommendationHint(student, defaults);
+}
+
 renderOrderQuickForm = function renderOrderQuickFormWithPaymentFields() {
   const selectedStudent = appState.students.find((item) => item.id === selectedStudentForOrder);
-  const defaultClass = getClass(selectedStudent?.className) || appState.classes[0] || {};
-  const defaultCourse = defaultClass.course || selectedStudent?.course || "常规课程";
-  const defaultPackage = selectedOrderPackage(defaultCourse);
+  const defaultStudent = selectedStudent || appState.students[0];
+  const defaults = orderRecommendedDefaults(defaultStudent);
+  const defaultClass = defaults.classItem || appState.classes[0] || {};
+  const defaultCourse = defaults.course;
+  const defaultPackage = selectedOrderPackage(defaultCourse, defaults.packageKey);
   const defaultMethod = "微信";
   const defaultAccount = typeof paymentAccountForMethod === "function" ? paymentAccountForMethod(defaultMethod) : "微信收款码";
   return `
@@ -293,10 +370,10 @@ renderOrderQuickForm = function renderOrderQuickFormWithPaymentFields() {
         <span class="muted">选择报名套餐后自动填充课时、金额、欠费和有效期，仍可按实际收款微调。</span>
       </div>
       <div class="operation-grid">
-        <label>学员<select name="studentId" required>${studentOptions(selectedStudentForOrder)}</select></label>
-        <label>报读班级<select name="className" id="orderClassSelect" required>${classOptions(defaultClass.name)}</select></label>
+        <label>学员<select name="studentId" required>${studentOptions(defaultStudent?.id || "")}</select></label>
+        <label>报读班级<select name="className" id="orderClassSelect" required>${classOptions(defaultClass.name || defaults.className)}</select></label>
         <label>报读课程<select name="course" id="orderCourseSelect" required>${courseOptions(defaultCourse)}</select></label>
-        <label>报名套餐<select name="package" id="orderPackageSelect">${orderPackageOptions(defaultCourse)}</select></label>
+        <label>报名套餐<select name="package" id="orderPackageSelect">${orderPackageOptions(defaultCourse, defaults.packageKey)}</select></label>
         <label>购买课时<input name="bought" type="number" min="0" step="0.5" value="${escapeHtml(defaultPackage.bought)}" required /></label>
         <label>赠送课时<input name="gift" type="number" min="0" step="0.5" value="${escapeHtml(defaultPackage.gift)}" /></label>
         <label>实收金额<input name="paid" type="number" min="0" step="1" value="${escapeHtml(defaultPackage.paid)}" required /></label>
@@ -305,6 +382,7 @@ renderOrderQuickForm = function renderOrderQuickFormWithPaymentFields() {
         <label>收款方式<select name="payMethod">${typeof paymentMethodOptions === "function" ? paymentMethodOptions(defaultMethod) : "<option>微信</option><option>支付宝</option><option>银行转账</option><option>现金</option><option>线下收款</option>"}</select></label>
         <label>收款账户<select name="account">${typeof paymentAccountOptions === "function" ? paymentAccountOptions(defaultAccount) : `<option>${escapeHtml(defaultAccount)}</option>`}</select></label>
         <label>支付单号<input name="tradeNo" placeholder="可选" /></label>
+        <div class="muted order-recommend-hint" data-order-recommend-hint>${escapeHtml(orderRecommendationHint(defaultStudent, defaults))}</div>
         <div class="muted order-package-hint" data-order-package-hint>${escapeHtml(`${defaultPackage.note} 有效期至 ${addMonthsToToday(defaultPackage.months)}，老师仍可按实际收款微调。`)}</div>
       </div>
       <div class="dialog-actions">
@@ -515,7 +593,17 @@ document.addEventListener("change", (event) => {
     applyOrderPackagePreset();
   }
 
+  if (event.target.name === "studentId" && event.target.closest("#orderForm")) {
+    syncOrderStudentDefaults(event.target.form || event.target.closest("form"));
+  }
+
   if (event.target.id === "orderCourseSelect" || event.target.id === "orderClassSelect") {
+    if (event.target.id === "orderClassSelect") {
+      const student = appState.students.find((item) => item.id === event.target.form?.elements?.studentId?.value);
+      const defaults = orderRecommendedDefaults(student);
+      const hint = event.target.form?.querySelector("[data-order-recommend-hint]");
+      if (hint) hint.textContent = orderRecommendationHint(student, { ...defaults, className: event.target.value, classItem: getClass(event.target.value), course: getClass(event.target.value)?.course || event.target.form?.elements?.course?.value || defaults.course });
+    }
     refreshOrderPackageChoices();
   }
 

@@ -631,6 +631,7 @@ renderClasses = function renderClassesWithProfile() {
       </div>
       <div class="section-body">
         ${renderNotice("classes")}
+        ${typeof renderClassCreateForm === "function" ? renderClassCreateForm() : ""}
         ${renderAssignPanel()}
         ${classListSummary(allClasses, visibleClasses)}
         ${renderClassFilterToolbar()}

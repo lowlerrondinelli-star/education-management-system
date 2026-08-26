@@ -406,6 +406,25 @@ function campusChoiceOptions(selectedValue = "主校区") {
   );
 }
 
+function classStageOptions(selectedValue = "秋季班") {
+  return choiceOptions(
+    [
+      "春季班",
+      "暑假班",
+      "秋季班",
+      "寒假班",
+      "冲刺班",
+      "长期班",
+      ...(appState.classes || []).map((item) => item.stage)
+    ],
+    selectedValue
+  );
+}
+
+function classStatusOptions(selectedValue = "招生中") {
+  return choiceOptions(["招生中", "开课中", "已满班", "已结课", ...(appState.classes || []).map((item) => item.status)], selectedValue);
+}
+
 function subjectChoiceOptions(selectedValue = "数学") {
   return choiceOptions(
     [
@@ -765,6 +784,33 @@ function renderAssignPanel() {
     </form>`;
 }
 
+function renderClassCreateForm() {
+  const defaultClass = appState.classes[0] || {};
+  return `
+    <form class="operation-panel" id="classForm">
+      <div>
+        <strong>新增班级</strong>
+        <span class="muted">课程、教师、助教和教室优先从基础资料选择，减少后续排课口径不一致。</span>
+      </div>
+      <div class="operation-grid">
+        <label>班级名称<input name="name" required placeholder="例如 25秋初一数学A班" /></label>
+        <label>关联课程<select name="course" required>${courseOptions(defaultClass.course || "常规课程")}</select></label>
+        <label>任课教师<select name="teacher" required>${teacherChoiceOptions(defaultClass.teacher || "任课老师")}</select></label>
+        <label>助教<select name="assistant">${ownerChoiceOptions(defaultClass.assistant || "前台老师")}</select></label>
+        <label>教室<select name="room" required>${roomChoiceOptions(defaultClass.room || "默认教室")}</select></label>
+        <label>班型阶段<select name="stage" required>${classStageOptions(defaultClass.stage || "秋季班")}</select></label>
+        <label>满班人数<input name="capacity" type="number" min="1" value="12" required /></label>
+        <label>学生扣课<input name="deduct" type="number" min="0" step="0.5" value="1" required /></label>
+        <label>教师课时<input name="teacherHours" type="number" min="0" step="0.5" value="1" required /></label>
+        <label>班级状态<select name="status">${classStatusOptions("招生中")}</select></label>
+      </div>
+      <div class="dialog-actions">
+        <span class="muted">保存后可立即用于报名、分班和排课。</span>
+        <button class="primary-action" type="submit">保存班级</button>
+      </div>
+    </form>`;
+}
+
 function renderClasses() {
   const rows = appState.classes
     .filter(matchesRow)
@@ -787,6 +833,7 @@ function renderClasses() {
       <div class="section-head"><h3>班级与容量</h3><span class="muted">支持普通课程和组合课程</span></div>
       <div class="section-body">
         ${renderNotice("classes")}
+        ${renderClassCreateForm()}
         ${renderAssignPanel()}
         ${table(["班级", "关联课程", "教师", "助教", "教室", "人数", "学生扣课", "教师课时", "状态"], rows)}
       </div>
@@ -1145,6 +1192,34 @@ function assignStudentToClass(formData) {
   setView("classes");
 }
 
+function addClass(formData) {
+  const name = text(formData.get("name")).trim();
+  if (!name) return;
+  if (appState.classes.some((item) => item.name === name)) {
+    setNotice("classes", `班级 ${name} 已存在。`, "red");
+    renderView();
+    return;
+  }
+
+  appState.classes.unshift({
+    name,
+    course: text(formData.get("course")).trim(),
+    teacher: text(formData.get("teacher")).trim(),
+    assistant: text(formData.get("assistant")).trim(),
+    room: text(formData.get("room")).trim(),
+    capacity: numberFromForm(formData, "capacity", 12),
+    students: 0,
+    deduct: numberFromForm(formData, "deduct", 1),
+    teacherHours: numberFromForm(formData, "teacherHours", 1),
+    stage: text(formData.get("stage")).trim(),
+    status: text(formData.get("status")).trim() || "招生中"
+  });
+  syncClassCounts();
+  setNotice("classes", `班级 ${name} 已保存，可用于报名、分班和排课。`);
+  saveState();
+  setView("classes");
+}
+
 function createLesson(formData) {
   const date = text(formData.get("date"));
   const startTime = text(formData.get("startTime"));
@@ -1284,6 +1359,11 @@ studentForm.addEventListener("submit", (event) => {
 });
 
 document.addEventListener("submit", (event) => {
+  if (event.target.id === "classForm") {
+    event.preventDefault();
+    addClass(new FormData(event.target));
+  }
+
   if (event.target.id === "orderForm") {
     event.preventDefault();
     enrollStudent(new FormData(event.target));

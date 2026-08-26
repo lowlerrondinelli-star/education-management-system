@@ -117,7 +117,7 @@ renderOrderQuickForm = function renderOrderQuickFormWithPaymentFields() {
         <label>欠费金额<input name="debt" type="number" min="0" step="1" value="0" /></label>
         <label>有效期至<input name="expireAt" type="date" value="2027-02-28" required /></label>
         <label>收款方式<select name="payMethod"><option>微信</option><option>支付宝</option><option>银行转账</option><option>现金</option><option>线下收款</option></select></label>
-        <label>收款账户<input name="account" value="校区收款账户" /></label>
+        <label>收款账户<select name="account">${typeof paymentAccountOptions === "function" ? paymentAccountOptions("校区收款账户") : "<option>校区收款账户</option>"}</select></label>
         <label>支付单号<input name="tradeNo" placeholder="可选" /></label>
       </div>
       <div class="dialog-actions">

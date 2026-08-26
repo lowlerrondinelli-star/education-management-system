@@ -90,6 +90,97 @@ function applyFollowUpDuePreset(form) {
   if (form.elements.dueDate) form.elements.dueDate.value = preset.date;
 }
 
+function followUpScenarioPresets() {
+  return {
+    debtToday: {
+      label: "欠费当天催缴",
+      type: "欠费补缴",
+      owner: "前台老师",
+      duePreset: "today",
+      result: "待联系",
+      priority: "高",
+      note: "欠费未缴，需再次提醒"
+    },
+    lowBalanceRenewal: {
+      label: "课时不足续费",
+      type: "课时不足",
+      owner: "教务老师",
+      duePreset: "tomorrow",
+      result: "待联系",
+      priority: "高",
+      note: "课时不足，提醒尽快续费"
+    },
+    promisedPayment: {
+      label: "约定缴费复核",
+      type: "欠费补缴",
+      owner: "财务老师",
+      duePreset: "tomorrow",
+      result: "约定缴费",
+      priority: "高",
+      note: "家长约定周五补缴"
+    },
+    intentTrial: {
+      label: "意向试听邀约",
+      type: "意向回访",
+      owner: "前台老师",
+      duePreset: "today",
+      result: "待联系",
+      priority: "中",
+      note: "需要安排试听后再确认报名"
+    },
+    missedCall: {
+      label: "未接通再联系",
+      type: "常规回访",
+      owner: "前台老师",
+      duePreset: "tomorrow",
+      result: "未接通",
+      priority: "中",
+      note: "家长暂未回复，明天继续联系"
+    },
+    highRiskCare: {
+      label: "高风险反馈安抚",
+      type: "高风险反馈",
+      owner: "校区校长",
+      duePreset: "today",
+      result: "待联系",
+      priority: "高",
+      note: "高风险反馈，需校区负责人跟进"
+    }
+  };
+}
+
+function followUpScenarioOptions(selectedValue = "debtToday") {
+  return Object.entries(followUpScenarioPresets())
+    .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function followUpTypeOptions(selectedValue = "欠费补缴") {
+  return followUpTypes.map((item) => `<option value="${escapeHtml(item)}" ${item === selectedValue ? "selected" : ""}>${escapeHtml(item)}</option>`).join("");
+}
+
+function followUpResultOptions(selectedValue = "待联系") {
+  return followUpResults.map((item) => `<option value="${escapeHtml(item)}" ${item === selectedValue ? "selected" : ""}>${escapeHtml(item)}</option>`).join("");
+}
+
+function followUpPriorityOptions(selectedValue = "高") {
+  return ["高", "中", "低"].map((item) => `<option value="${escapeHtml(item)}" ${item === selectedValue ? "selected" : ""}>${escapeHtml(item)}</option>`).join("");
+}
+
+function applyFollowUpScenario(form, scenario) {
+  if (!form) return;
+  const preset = followUpScenarioPresets()[scenario] || followUpScenarioPresets().debtToday;
+  if (form.elements.type) form.elements.type.innerHTML = followUpTypeOptions(preset.type);
+  if (form.elements.owner) form.elements.owner.innerHTML = typeof operatorChoiceOptions === "function" ? operatorChoiceOptions(preset.owner) : `<option>${escapeHtml(preset.owner)}</option>`;
+  if (form.elements.duePreset) {
+    form.elements.duePreset.innerHTML = followUpDueDateOptions(preset.duePreset);
+    applyFollowUpDuePreset(form);
+  }
+  if (form.elements.result) form.elements.result.innerHTML = followUpResultOptions(preset.result);
+  if (form.elements.priority) form.elements.priority.innerHTML = followUpPriorityOptions(preset.priority);
+  if (form.elements.note) form.elements.note.innerHTML = typeof followUpNoteOptions === "function" ? followUpNoteOptions(preset.note) : `<option>${escapeHtml(preset.note)}</option>`;
+}
+
 function followUpKey(type, studentName) {
   return `${type}:${studentName}`;
 }
@@ -275,19 +366,21 @@ function renderFollowUpCards(items) {
 }
 
 function renderFollowUpForm() {
+  const defaults = followUpScenarioPresets().debtToday;
   return `
     <form class="master-card" id="followUpForm">
       <h4>新增跟进</h4>
       <div class="operation-grid compact">
+        <label>跟进场景模板<select name="scenario">${followUpScenarioOptions("debtToday")}</select></label>
         <label>学员<select name="studentId" required>${studentOptions(appState.students[0]?.id || "")}</select></label>
-        <label>跟进类型<select name="type">${followUpTypes.map((item) => `<option>${escapeHtml(item)}</option>`).join("")}</select></label>
-        <label>跟进人<select name="owner" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions("前台老师") : "<option>前台老师</option>"}</select></label>
-        <label>跟进日期模板<select name="duePreset">${followUpDueDateOptions("tomorrow")}</select></label>
-        <label>下次跟进<input name="dueDate" type="date" value="${daysFromToday(1)}" required /></label>
-        <label>跟进结果<select name="result">${followUpResults.map((item) => `<option>${escapeHtml(item)}</option>`).join("")}</select></label>
-        <label>优先级<select name="priority"><option>中</option><option>高</option><option>低</option></select></label>
+        <label>跟进类型<select name="type">${followUpTypeOptions(defaults.type)}</select></label>
+        <label>跟进人<select name="owner" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions(defaults.owner) : `<option>${escapeHtml(defaults.owner)}</option>`}</select></label>
+        <label>跟进日期模板<select name="duePreset">${followUpDueDateOptions(defaults.duePreset)}</select></label>
+        <label>下次跟进<input name="dueDate" type="date" value="${todayText()}" required /></label>
+        <label>跟进结果<select name="result">${followUpResultOptions(defaults.result)}</select></label>
+        <label>优先级<select name="priority">${followUpPriorityOptions(defaults.priority)}</select></label>
       </div>
-      <label class="stack-item">备注<select name="note">${typeof followUpNoteOptions === "function" ? followUpNoteOptions("家长约定周五补缴") : "<option>家长约定周五补缴</option>"}</select></label>
+      <label class="stack-item">备注<select name="note">${typeof followUpNoteOptions === "function" ? followUpNoteOptions(defaults.note) : `<option>${escapeHtml(defaults.note)}</option>`}</select></label>
       <button class="primary-action" type="submit">保存跟进</button>
     </form>`;
 }
@@ -367,6 +460,10 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  if (event.target.name === "scenario" && event.target.closest("#followUpForm")) {
+    applyFollowUpScenario(event.target.form, event.target.value);
+  }
+
   if (event.target.name === "duePreset" && event.target.closest("#followUpForm")) {
     applyFollowUpDuePreset(event.target.form);
   }

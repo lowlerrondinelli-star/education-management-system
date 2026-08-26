@@ -542,9 +542,13 @@ function staffSubjectOptions(selectedValue = "数学") {
       "英语",
       "物理",
       "化学",
+      "全科",
       "数学、物理",
       "语文、英语",
       "全科托管",
+      "招生运营",
+      "财务收款",
+      "运营管理",
       ...(appState.teachers || []).map((item) => item.subjects),
       ...(appState.employees || []).map((item) => item.subjects),
       ...(appState.courses || []).map((item) => item.subject)
@@ -563,6 +567,7 @@ function staffGradeOptions(selectedValue = "初中") {
       "高一、高二",
       "初一、初二、初三",
       "小初",
+      "全学段",
       ...(appState.teachers || []).map((item) => item.grades),
       ...(appState.employees || []).map((item) => item.grades),
       ...(appState.courses || []).map((item) => item.grade)

@@ -178,6 +178,83 @@ function roleOptions(selectedValue = "") {
     .join("");
 }
 
+function employeeTemplatePresets() {
+  return {
+    academic: {
+      label: "教务/学管师",
+      employeeType: "正式员工",
+      department: "教务部",
+      roles: "教务/学管师",
+      isTeacher: "否",
+      subjects: "全科",
+      grades: "全学段"
+    },
+    frontDesk: {
+      label: "前台/招生顾问",
+      employeeType: "正式员工",
+      department: "招生前台",
+      roles: "前台/招生顾问",
+      isTeacher: "否",
+      subjects: "招生运营",
+      grades: "全学段"
+    },
+    teacher: {
+      label: "任课教师",
+      employeeType: "正式员工",
+      department: "教学部",
+      roles: "教师",
+      isTeacher: "是",
+      subjects: "数学",
+      grades: "初中"
+    },
+    partTimeTeacher: {
+      label: "兼职任课老师",
+      employeeType: "兼职员工",
+      department: "教学部",
+      roles: "教师",
+      isTeacher: "是",
+      subjects: "英语",
+      grades: "小学"
+    },
+    cashier: {
+      label: "财务/收银",
+      employeeType: "正式员工",
+      department: "财务部",
+      roles: "财务/收银",
+      isTeacher: "否",
+      subjects: "财务收款",
+      grades: "全学段"
+    },
+    principal: {
+      label: "校长/管理员",
+      employeeType: "正式员工",
+      department: "校长室",
+      roles: "校长/管理员",
+      isTeacher: "是",
+      subjects: "运营管理",
+      grades: "全学段"
+    }
+  };
+}
+
+function employeeTemplateOptions(selectedValue = "academic") {
+  return Object.entries(employeeTemplatePresets())
+    .map(([value, item]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function applyEmployeeTemplate(form, key) {
+  if (!form) return;
+  const template = employeeTemplatePresets()[key];
+  if (!template) return;
+  if (form.elements.employeeType) form.elements.employeeType.value = template.employeeType;
+  if (form.elements.department) form.elements.department.value = template.department;
+  if (form.elements.roles) form.elements.roles.value = template.roles;
+  if (form.elements.isTeacher) form.elements.isTeacher.value = template.isTeacher;
+  if (form.elements.subjects) form.elements.subjects.value = template.subjects;
+  if (form.elements.grades) form.elements.grades.value = template.grades;
+}
+
 function roleTemplateOptions(selectedValue = "教务/学管师") {
   return defaultRoles
     .map((role) => `<option value="${escapeHtml(role.name)}" ${role.name === selectedValue ? "selected" : ""}>${escapeHtml(role.name)}</option>`)
@@ -271,6 +348,7 @@ function renderEmployeeForm() {
     <form class="master-card" id="employeeForm">
       <h4>新增员工</h4>
       <div class="operation-grid">
+        <label>入职岗位模板<select name="employeeTemplate" id="employeeTemplateSelect">${employeeTemplateOptions("academic")}</select></label>
         <label>员工姓名<input name="name" required placeholder="例如 教务-刘老师" /></label>
         <label>手机号<input name="phone" maxlength="11" placeholder="11 位手机号" /></label>
         <label>员工类型<select name="employeeType"><option>正式员工</option><option>兼职员工</option><option>外聘老师</option></select></label>
@@ -475,6 +553,11 @@ document.addEventListener("submit", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  if (event.target.id === "employeeTemplateSelect") {
+    applyEmployeeTemplate(event.target.form, event.target.value);
+    return;
+  }
+
   if (event.target.id === "roleTemplateSelect") {
     const template = defaultRoles.find((role) => role.name === event.target.value);
     if (!template) return;

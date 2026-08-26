@@ -178,6 +178,48 @@ function roleOptions(selectedValue = "") {
     .join("");
 }
 
+function roleTemplateOptions(selectedValue = "教务/学管师") {
+  return defaultRoles
+    .map((role) => `<option value="${escapeHtml(role.name)}" ${role.name === selectedValue ? "selected" : ""}>${escapeHtml(role.name)}</option>`)
+    .join("");
+}
+
+function roleDescriptionOptions(selectedValue = defaultRoles[2].description) {
+  return choiceOptions(
+    [
+      ...defaultRoles.map((role) => role.description),
+      "负责校区日常运营协同",
+      "按岗位分配可用模块"
+    ],
+    selectedValue
+  );
+}
+
+function rolePermissionTemplateOptions(selectedValue = defaultRoles[2].permissions.join(",")) {
+  return defaultRoles
+    .map((role) => {
+      const value = role.permissions.join(",");
+      const labels = roleModules
+        .filter(([id]) => role.permissions.includes(id))
+        .map(([, label]) => label)
+        .join("、");
+      return `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(`${role.name}：${labels}`)}</option>`;
+    })
+    .join("");
+}
+
+function roleActionOptions(selectedValue = defaultRoles[2].actions) {
+  return choiceOptions(
+    [
+      ...defaultRoles.map((role) => role.actions),
+      "查看、新增、编辑",
+      "查看、审核、导出",
+      "查看、跟进、分配任务"
+    ],
+    selectedValue
+  );
+}
+
 function renderStaff() {
   ensureStaffData();
   const activeEmployees = appState.employees.filter((item) => item.status === "在职").length;
@@ -243,16 +285,18 @@ function renderEmployeeForm() {
 }
 
 function renderRoleForm() {
+  const defaultRole = defaultRoles.find((role) => role.name === "教务/学管师") || defaultRoles[0];
   return `
     <form class="master-card" id="roleForm">
       <h4>新增角色</h4>
       <div class="operation-grid">
         <label>角色名称<input name="name" required placeholder="例如 分校教务主管" /></label>
-        <label>角色说明<input name="description" value="按岗位分配可用模块" /></label>
-        <label>可用模块<input name="permissions" value="dashboard,students,classes,schedule" /></label>
-        <label>允许动作<input name="actions" value="查看、新增、编辑" /></label>
+        <label>岗位模板<select name="template" id="roleTemplateSelect">${roleTemplateOptions(defaultRole.name)}</select></label>
+        <label>角色说明<select name="description" id="roleDescriptionSelect">${roleDescriptionOptions(defaultRole.description)}</select></label>
+        <label>可用模块<select name="permissions" id="rolePermissionsSelect">${rolePermissionTemplateOptions(defaultRole.permissions.join(","))}</select></label>
+        <label>允许动作<select name="actions" id="roleActionsSelect">${roleActionOptions(defaultRole.actions)}</select></label>
       </div>
-      <span class="muted">可用模块用英文逗号填写，例如 dashboard,students,orders,data。</span>
+      <span class="muted">普通员工按岗位模板选择即可，系统会自动保存对应模块权限。</span>
       <button class="primary-action" type="submit">保存角色</button>
     </form>`;
 }
@@ -431,6 +475,18 @@ document.addEventListener("submit", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  if (event.target.id === "roleTemplateSelect") {
+    const template = defaultRoles.find((role) => role.name === event.target.value);
+    if (!template) return;
+    const descriptionSelect = document.querySelector("#roleDescriptionSelect");
+    const permissionsSelect = document.querySelector("#rolePermissionsSelect");
+    const actionsSelect = document.querySelector("#roleActionsSelect");
+    if (descriptionSelect) descriptionSelect.value = template.description;
+    if (permissionsSelect) permissionsSelect.value = template.permissions.join(",");
+    if (actionsSelect) actionsSelect.value = template.actions;
+    return;
+  }
+
   if (event.target.id !== "rolePreviewSelect") return;
   previewRoleName = event.target.value;
   renderView();

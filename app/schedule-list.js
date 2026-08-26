@@ -27,6 +27,17 @@ scheduleListStyle.textContent = `
     min-width: 90px;
   }
 
+  .schedule-next-step {
+    display: grid;
+    gap: 4px;
+    min-width: 140px;
+    max-width: 220px;
+  }
+
+  .schedule-next-step .muted {
+    overflow-wrap: anywhere;
+  }
+
   @media (max-width: 650px) {
     .schedule-list-toolbar,
     .schedule-list-toolbar label,
@@ -156,6 +167,43 @@ function scheduleListStudentCount(lesson) {
   return lessonStudents(lesson).length;
 }
 
+function scheduleNextStep(lesson) {
+  const conflictIds = typeof lessonIdsWithConflicts === "function" ? lessonIdsWithConflicts() : new Set();
+  const hasAttendance = typeof lessonHasAttendance === "function" ? lessonHasAttendance(lesson) : false;
+  const hasFeedback = typeof lessonHasSentFeedback === "function" ? lessonHasSentFeedback(lesson) : false;
+  let title = "按课表执行";
+  let detail = "课节状态正常，按计划推进。";
+  let tone = "green";
+
+  if (conflictIds.has(lesson.id)) {
+    title = "先处理冲突";
+    detail = "老师、教室或班级时间冲突，先调课再点名。";
+    tone = "red";
+  } else if (lesson.status === "已取消") {
+    title = "已取消";
+    detail = "无需点名，可检查是否需要补课。";
+    tone = "amber";
+  } else if (lesson.status === "待上课" && !hasAttendance) {
+    title = "先点名";
+    detail = "上课前保存考勤，再确认上课消课。";
+    tone = "amber";
+  } else if (lesson.status === "待上课") {
+    title = "确认上课";
+    detail = "考勤已记录，上课后可确认消课。";
+    tone = "green";
+  } else if (lesson.status === "已上课" && !hasFeedback) {
+    title = "补课后反馈";
+    detail = "已上课但未发送反馈，建议当天完成。";
+    tone = "amber";
+  } else if (lesson.status === "已上课") {
+    title = "闭环完成";
+    detail = "已上课并完成反馈，可回看流水。";
+    tone = "green";
+  }
+
+  return `<div class="schedule-next-step">${tag(title, tone)}<span class="muted">${escapeHtml(detail)}</span></div>`;
+}
+
 function renderScheduleListRows(lessons) {
   return lessons.map((lesson) => {
     const done = lesson.status === "已上课";
@@ -168,6 +216,7 @@ function renderScheduleListRows(lessons) {
       <td>${escapeHtml(lesson.room)}</td>
       <td>${tag(lesson.status, statusTone(lesson.status))}</td>
       <td class="schedule-attendance-cell">${escapeHtml(typeof attendanceSummary === "function" ? attendanceSummary(lesson) : "未点名")}</td>
+      <td>${scheduleNextStep(lesson)}</td>
       <td>
         <div class="schedule-list-actions">
           <button class="small-button" type="button" data-attendance-lesson="${escapeHtml(lesson.id)}" ${canceled ? "disabled" : ""}>点名</button>
@@ -195,7 +244,7 @@ function appendScheduleListPanel() {
       <div class="section-body">
         ${scheduleListStats(visibleLessons)}
         ${renderScheduleListToolbar()}
-        ${table(["日期时间", "班级/对象", "科目", "老师", "教室", "状态", "点名", "操作"], renderScheduleListRows(visibleLessons))}
+        ${table(["日期时间", "班级/对象", "科目", "老师", "教室", "状态", "点名", "下一步", "操作"], renderScheduleListRows(visibleLessons))}
       </div>
     </section>`
   );

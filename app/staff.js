@@ -182,6 +182,7 @@ function employeeTemplatePresets() {
   return {
     academic: {
       label: "教务/学管师",
+      name: "教务-刘老师",
       employeeType: "正式员工",
       department: "教务部",
       roles: "教务/学管师",
@@ -191,6 +192,7 @@ function employeeTemplatePresets() {
     },
     frontDesk: {
       label: "前台/招生顾问",
+      name: "前台-王老师",
       employeeType: "正式员工",
       department: "招生前台",
       roles: "前台/招生顾问",
@@ -200,6 +202,7 @@ function employeeTemplatePresets() {
     },
     teacher: {
       label: "任课教师",
+      name: "数学-李老师",
       employeeType: "正式员工",
       department: "教学部",
       roles: "教师",
@@ -209,6 +212,7 @@ function employeeTemplatePresets() {
     },
     partTimeTeacher: {
       label: "兼职任课老师",
+      name: "英语-赵老师",
       employeeType: "兼职员工",
       department: "教学部",
       roles: "教师",
@@ -218,6 +222,7 @@ function employeeTemplatePresets() {
     },
     cashier: {
       label: "财务/收银",
+      name: "财务-陈老师",
       employeeType: "正式员工",
       department: "财务部",
       roles: "财务/收银",
@@ -227,6 +232,7 @@ function employeeTemplatePresets() {
     },
     principal: {
       label: "校长/管理员",
+      name: "校长-周老师",
       employeeType: "正式员工",
       department: "校长室",
       roles: "校长/管理员",
@@ -235,6 +241,12 @@ function employeeTemplatePresets() {
       grades: "全学段"
     }
   };
+}
+
+function setStaffChoice(select, builder, value) {
+  if (!select) return;
+  select.innerHTML = builder(value);
+  select.value = value;
 }
 
 function employeeTemplateOptions(selectedValue = "academic") {
@@ -247,23 +259,72 @@ function applyEmployeeTemplate(form, key) {
   if (!form) return;
   const template = employeeTemplatePresets()[key];
   if (!template) return;
+  if (form.elements.name) {
+    form.elements.name.value = template.name;
+    form.elements.name.dataset.autoName = template.name;
+  }
   if (form.elements.employeeType) form.elements.employeeType.value = template.employeeType;
-  if (form.elements.department) form.elements.department.value = template.department;
-  if (form.elements.roles) form.elements.roles.value = template.roles;
+  setStaffChoice(form.elements.department, employeeDepartmentOptions, template.department);
+  setStaffChoice(form.elements.roles, roleOptions, template.roles);
   if (form.elements.isTeacher) form.elements.isTeacher.value = template.isTeacher;
-  if (form.elements.subjects) form.elements.subjects.value = template.subjects;
-  if (form.elements.grades) form.elements.grades.value = template.grades;
+  setStaffChoice(form.elements.subjects, staffSubjectOptions, template.subjects);
+  setStaffChoice(form.elements.grades, staffGradeOptions, template.grades);
 }
 
-function roleTemplateOptions(selectedValue = "教务/学管师") {
-  return defaultRoles
-    .map((role) => `<option value="${escapeHtml(role.name)}" ${role.name === selectedValue ? "selected" : ""}>${escapeHtml(role.name)}</option>`)
+function roleCreateTemplatePresets() {
+  return {
+    academicLead: {
+      label: "分校教务主管",
+      name: "分校教务主管",
+      description: "负责分校分班、排课、点名和课消复核",
+      permissions: ["dashboard", "students", "classes", "schedule", "attendance", "consume", "feedback", "masters", "data"],
+      actions: "查看、分班、排课、点名、消课、反馈、导出"
+    },
+    frontDeskLead: {
+      label: "招生前台主管",
+      name: "招生前台主管",
+      description: "负责线索、建档、报名、收款和导入核对",
+      permissions: ["dashboard", "students", "orders", "classes", "data", "templates"],
+      actions: "查看、新增、报名、收款、导入、导出"
+    },
+    partTimeTeacher: {
+      label: "兼职教师",
+      name: "兼职教师",
+      description: "只查看本人课表并完成点名和课后反馈",
+      permissions: ["dashboard", "schedule", "attendance", "feedback"],
+      actions: "查看课表、点名、课后反馈"
+    },
+    financeReviewer: {
+      label: "财务复核员",
+      name: "财务复核员",
+      description: "核对订单、欠费、收款流水和财务异常",
+      permissions: ["dashboard", "orders", "consume", "data"],
+      actions: "查看、收款、审核、导出"
+    },
+    campusPrincipal: {
+      label: "分校校长",
+      name: "分校校长",
+      description: "查看分校全量运营数据并处理关键审批",
+      permissions: ["dashboard", "students", "orders", "classes", "schedule", "attendance", "consume", "feedback", "masters", "data", "templates"],
+      actions: "查看、新增、编辑、审核、导入、导出"
+    }
+  };
+}
+
+function selectedRoleCreateTemplate(key = "academicLead") {
+  return roleCreateTemplatePresets()[key] || roleCreateTemplatePresets().academicLead;
+}
+
+function roleTemplateOptions(selectedValue = "academicLead") {
+  return Object.entries(roleCreateTemplatePresets())
+    .map(([value, role]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(role.label)}</option>`)
     .join("");
 }
 
-function roleDescriptionOptions(selectedValue = defaultRoles[2].description) {
+function roleDescriptionOptions(selectedValue = selectedRoleCreateTemplate().description) {
   return choiceOptions(
     [
+      ...Object.values(roleCreateTemplatePresets()).map((role) => role.description),
       ...defaultRoles.map((role) => role.description),
       "负责校区日常运营协同",
       "按岗位分配可用模块"
@@ -272,8 +333,8 @@ function roleDescriptionOptions(selectedValue = defaultRoles[2].description) {
   );
 }
 
-function rolePermissionTemplateOptions(selectedValue = defaultRoles[2].permissions.join(",")) {
-  return defaultRoles
+function rolePermissionTemplateOptions(selectedValue = selectedRoleCreateTemplate().permissions.join(",")) {
+  return [...Object.values(roleCreateTemplatePresets()), ...defaultRoles]
     .map((role) => {
       const value = role.permissions.join(",");
       const labels = roleModules
@@ -285,9 +346,10 @@ function rolePermissionTemplateOptions(selectedValue = defaultRoles[2].permissio
     .join("");
 }
 
-function roleActionOptions(selectedValue = defaultRoles[2].actions) {
+function roleActionOptions(selectedValue = selectedRoleCreateTemplate().actions) {
   return choiceOptions(
     [
+      ...Object.values(roleCreateTemplatePresets()).map((role) => role.actions),
       ...defaultRoles.map((role) => role.actions),
       "查看、新增、编辑",
       "查看、审核、导出",
@@ -344,32 +406,33 @@ function renderStaff() {
 }
 
 function renderEmployeeForm() {
+  const defaultTemplate = employeeTemplatePresets().academic;
   return `
     <form class="master-card" id="employeeForm">
       <h4>新增员工</h4>
       <div class="operation-grid">
         <label>入职岗位模板<select name="employeeTemplate" id="employeeTemplateSelect">${employeeTemplateOptions("academic")}</select></label>
-        <label>员工姓名<input name="name" required placeholder="例如 教务-刘老师" /></label>
+        <label>员工姓名<input name="name" value="${escapeHtml(defaultTemplate.name)}" data-auto-name="${escapeHtml(defaultTemplate.name)}" required placeholder="例如 教务-刘老师" /></label>
         <label>手机号<input name="phone" maxlength="11" placeholder="11 位手机号" /></label>
         <label>员工类型<select name="employeeType"><option>正式员工</option><option>兼职员工</option><option>外聘老师</option></select></label>
-        <label>所属部门<select name="department" required>${employeeDepartmentOptions("教务部")}</select></label>
-        <label>校区角色<select name="roles">${roleOptions("教务/学管师")}</select></label>
+        <label>所属部门<select name="department" required>${employeeDepartmentOptions(defaultTemplate.department)}</select></label>
+        <label>校区角色<select name="roles">${roleOptions(defaultTemplate.roles)}</select></label>
         <label>是否教师<select name="isTeacher"><option>否</option><option>是</option></select></label>
-        <label>科目<select name="subjects">${staffSubjectOptions("数学")}</select></label>
-        <label>年级<select name="grades">${staffGradeOptions("初中")}</select></label>
+        <label>科目<select name="subjects">${staffSubjectOptions(defaultTemplate.subjects)}</select></label>
+        <label>年级<select name="grades">${staffGradeOptions(defaultTemplate.grades)}</select></label>
       </div>
       <button class="primary-action" type="submit">保存员工</button>
     </form>`;
 }
 
 function renderRoleForm() {
-  const defaultRole = defaultRoles.find((role) => role.name === "教务/学管师") || defaultRoles[0];
+  const defaultRole = selectedRoleCreateTemplate("academicLead");
   return `
     <form class="master-card" id="roleForm">
       <h4>新增角色</h4>
       <div class="operation-grid">
-        <label>角色名称<input name="name" required placeholder="例如 分校教务主管" /></label>
-        <label>岗位模板<select name="template" id="roleTemplateSelect">${roleTemplateOptions(defaultRole.name)}</select></label>
+        <label>角色模板<select name="template" id="roleTemplateSelect">${roleTemplateOptions("academicLead")}</select></label>
+        <label>角色名称<input name="name" value="${escapeHtml(defaultRole.name)}" data-auto-name="${escapeHtml(defaultRole.name)}" required placeholder="例如 分校教务主管" /></label>
         <label>角色说明<select name="description" id="roleDescriptionSelect">${roleDescriptionOptions(defaultRole.description)}</select></label>
         <label>可用模块<select name="permissions" id="rolePermissionsSelect">${rolePermissionTemplateOptions(defaultRole.permissions.join(","))}</select></label>
         <label>允许动作<select name="actions" id="roleActionsSelect">${roleActionOptions(defaultRole.actions)}</select></label>
@@ -559,11 +622,19 @@ document.addEventListener("change", (event) => {
   }
 
   if (event.target.id === "roleTemplateSelect") {
-    const template = defaultRoles.find((role) => role.name === event.target.value);
+    const template = selectedRoleCreateTemplate(event.target.value);
     if (!template) return;
+    const nameInput = event.target.form?.elements?.name;
     const descriptionSelect = document.querySelector("#roleDescriptionSelect");
     const permissionsSelect = document.querySelector("#rolePermissionsSelect");
     const actionsSelect = document.querySelector("#roleActionsSelect");
+    if (nameInput) {
+      nameInput.value = template.name;
+      nameInput.dataset.autoName = template.name;
+    }
+    if (descriptionSelect) descriptionSelect.innerHTML = roleDescriptionOptions(template.description);
+    if (permissionsSelect) permissionsSelect.innerHTML = rolePermissionTemplateOptions(template.permissions.join(","));
+    if (actionsSelect) actionsSelect.innerHTML = roleActionOptions(template.actions);
     if (descriptionSelect) descriptionSelect.value = template.description;
     if (permissionsSelect) permissionsSelect.value = template.permissions.join(",");
     if (actionsSelect) actionsSelect.value = template.actions;

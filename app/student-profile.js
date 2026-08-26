@@ -328,6 +328,7 @@ function showStudentProfile(studentId) {
           <div class="action-row">
             <button class="small-button" type="button" data-student-order="${escapeHtml(student.id)}">办理报名</button>
             <button class="small-button" type="button" data-student-class="${escapeHtml(student.id)}">调整分班</button>
+            <button class="small-button" type="button" data-student-follow="${escapeHtml(student.id)}">新增跟进</button>
           </div>
         </section>
         <section class="profile-card">
@@ -375,6 +376,7 @@ renderStudents = function renderStudentsWithProfile() {
             <button class="small-button" type="button" data-student-detail="${student.id}">详情</button>
             <button class="small-button" type="button" data-student-order="${student.id}">报名</button>
             <button class="small-button" type="button" data-student-class="${student.id}">分班</button>
+            <button class="small-button" type="button" data-student-follow="${student.id}">跟进</button>
           </div>
         </td>
       </tr>`
@@ -402,7 +404,7 @@ document.addEventListener("click", (event) => {
 
   if (event.target.closest("[data-close-profile]")) studentProfileDialog.close();
 
-  if (event.target.closest("[data-student-order], [data-student-class]") && studentProfileDialog.open) {
+  if (event.target.closest("[data-student-order], [data-student-class], [data-student-follow]") && studentProfileDialog.open) {
     studentProfileDialog.close();
   }
 });

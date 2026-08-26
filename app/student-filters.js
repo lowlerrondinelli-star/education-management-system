@@ -213,6 +213,7 @@ renderStudents = function renderStudentsWithFilters() {
           <button class="small-button" type="button" data-student-detail="${escapeHtml(student.id)}">详情</button>
           <button class="small-button" type="button" data-student-order="${escapeHtml(student.id)}">报名</button>
           <button class="small-button" type="button" data-student-class="${escapeHtml(student.id)}">分班</button>
+          <button class="small-button" type="button" data-student-follow="${escapeHtml(student.id)}">跟进</button>
         </div>
       </td>
     </tr>`

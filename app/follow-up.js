@@ -407,7 +407,8 @@ function renderFollowUpCards(items) {
 }
 
 function renderFollowUpForm() {
-  const defaultStudent = appState.students[0];
+  const selectedStudent = appState.students.find((item) => item.id === selectedStudentForFollowUp);
+  const defaultStudent = selectedStudent || appState.students[0];
   const defaultScenario = followUpRecommendedScenario(defaultStudent);
   const defaults = followUpScenarioPresets()[defaultScenario] || followUpScenarioPresets().missedCall;
   const defaultDueDate = followUpDueDatePresets()[defaults.duePreset]?.date || todayText();
@@ -438,6 +439,7 @@ function addFollowUp(formData) {
   const followUp = {
     id: nextId("F"),
     key: "",
+    studentId: student.id,
     student: student.name,
     phone: student.phone,
     type,

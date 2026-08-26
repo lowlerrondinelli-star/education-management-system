@@ -28,6 +28,7 @@ let selectedWorkbookIndex = 0;
 let selectedSheetIndex = 0;
 let selectedStudentForOrder = "";
 let selectedStudentForClass = "";
+let selectedStudentForFollowUp = "";
 let selectedClassForLesson = "";
 let operationNotice = null;
 
@@ -1118,6 +1119,15 @@ function openLessonFormForClass(className) {
   setTimeout(() => document.querySelector('[data-clean-panel-open="lessonForm"]')?.click(), 30);
 }
 
+function openFollowUpFormForStudent(studentId) {
+  if (!studentId) return;
+  selectedStudentForFollowUp = studentId;
+  const student = appState.students.find((item) => item.id === studentId);
+  setNotice("followUp", `${student?.name || "该学员"} 已带入新增跟进表单，可直接核对跟进场景后保存。`, "amber");
+  setView("followUp");
+  setTimeout(() => document.querySelector('[data-clean-panel-open="followUpForm"]')?.click(), 30);
+}
+
 function table(headers, rows) {
   return `
     <div class="table-wrap">
@@ -1943,6 +1953,9 @@ document.addEventListener("click", (event) => {
 
   const classScheduleButton = event.target.closest("[data-class-schedule]");
   if (classScheduleButton) openLessonFormForClass(classScheduleButton.dataset.classSchedule);
+
+  const followUpShortcut = event.target.closest("[data-student-follow]");
+  if (followUpShortcut) openFollowUpFormForStudent(followUpShortcut.dataset.studentFollow);
 
   const finishButton = event.target.closest("[data-finish-lesson]");
   if (finishButton) finishLesson(finishButton.dataset.finishLesson);

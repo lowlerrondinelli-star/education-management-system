@@ -147,6 +147,92 @@ function leadScenarioOptions(selectedValue = "referralTrial") {
     .join("");
 }
 
+function leadSamplePresets() {
+  return {
+    referral: {
+      label: "转介绍：初一数学高意向",
+      scenario: "referralTrial",
+      name: "顾安然",
+      phone: "13900010910",
+      relation: "母亲",
+      grade: "初一年级",
+      school: "实验中学",
+      channel: "转介绍",
+      owner: "前台老师",
+      course: "初二小组课/一对一",
+      intention: "高",
+      nextFollowUpPreset: "today",
+      note: "同学家长介绍，建议优先安排测评。"
+    },
+    walkIn: {
+      label: "到店：初二小组课咨询",
+      scenario: "walkInHot",
+      name: "唐可然",
+      phone: "13900010911",
+      relation: "母亲",
+      grade: "初二年级",
+      school: "暂未确定",
+      channel: "到店咨询",
+      owner: "前台老师",
+      course: "初二小组课/一对一",
+      intention: "高",
+      nextFollowUpPreset: "tomorrow",
+      note: "高意向咨询，建议当天邀约试听。"
+    },
+    online: {
+      label: "线上：小红书待培养",
+      scenario: "onlineNurture",
+      name: "林沐阳",
+      phone: "13900010912",
+      relation: "母亲",
+      grade: "初一年级",
+      school: "校外/待确认",
+      channel: "小红书直连",
+      owner: "前台老师",
+      course: "初一数学同步",
+      intention: "中",
+      nextFollowUpPreset: "threeDays",
+      note: "家长关注班型和上课时间，需电话回访。"
+    },
+    assessment: {
+      label: "测评：高一物理试听",
+      scenario: "assessmentInvite",
+      name: "沈知远",
+      phone: "13900010913",
+      relation: "父亲",
+      grade: "高一年级",
+      school: "第一中学",
+      channel: "入学测评",
+      owner: "校长-奚老师",
+      course: "高一物理提高班",
+      intention: "高",
+      nextFollowUpPreset: "today",
+      note: "学生基础薄弱，建议先做入学测评。"
+    },
+    priceCompare: {
+      label: "表单：比价观望",
+      scenario: "priceCompare",
+      name: "许嘉禾",
+      phone: "13900010914",
+      relation: "母亲",
+      grade: "初二年级",
+      school: "暂未确定",
+      channel: "招生表单",
+      owner: "前台老师",
+      course: "初二小组课/一对一",
+      intention: "低",
+      nextFollowUpPreset: "week",
+      note: "家长比价中，需同步课程优势和优惠政策。"
+    }
+  };
+}
+
+function leadSampleOptions(selectedValue = "referral") {
+  return Object.entries(leadSamplePresets())
+    .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
 function leadIntentionOptions(selectedValue = "高") {
   return leadIntentions.map((item) => `<option value="${escapeHtml(item)}" ${item === selectedValue ? "selected" : ""}>${escapeHtml(item)}</option>`).join("");
 }
@@ -155,19 +241,49 @@ function leadFormDefaults(scenario) {
   return leadScenarioPresets()[scenario] || leadScenarioPresets().referralTrial;
 }
 
+function setLeadChoice(select, builder, value) {
+  if (!select) return;
+  select.innerHTML = builder(value);
+  select.value = value;
+}
+
 function applyLeadScenario(form, scenario) {
   if (!form) return;
   const defaults = leadFormDefaults(scenario);
-  if (form.elements.relation) form.elements.relation.innerHTML = typeof relationChoiceOptions === "function" ? relationChoiceOptions(defaults.relation) : `<option>${escapeHtml(defaults.relation)}</option>`;
-  if (form.elements.grade) form.elements.grade.innerHTML = typeof gradeChoiceOptions === "function" ? gradeChoiceOptions(defaults.grade) : `<option>${escapeHtml(defaults.grade)}</option>`;
-  if (form.elements.school) form.elements.school.innerHTML = typeof schoolChoiceOptions === "function" ? schoolChoiceOptions(defaults.school) : `<option>${escapeHtml(defaults.school)}</option>`;
-  if (form.elements.channel) form.elements.channel.innerHTML = typeof channelChoiceOptions === "function" ? channelChoiceOptions(defaults.channel) : `<option>${escapeHtml(defaults.channel)}</option>`;
-  if (form.elements.owner) form.elements.owner.innerHTML = typeof ownerChoiceOptions === "function" ? ownerChoiceOptions(defaults.owner) : `<option>${escapeHtml(defaults.owner)}</option>`;
-  if (form.elements.course) form.elements.course.innerHTML = typeof courseOptions === "function" ? courseOptions(defaults.course) : `<option>${escapeHtml(defaults.course)}</option>`;
-  if (form.elements.intention) form.elements.intention.innerHTML = leadIntentionOptions(defaults.intention);
-  if (form.elements.note) form.elements.note.innerHTML = typeof leadNoteOptions === "function" ? leadNoteOptions(defaults.note) : `<option>${escapeHtml(defaults.note)}</option>`;
+  setLeadChoice(form.elements.relation, typeof relationChoiceOptions === "function" ? relationChoiceOptions : (value) => `<option>${escapeHtml(value)}</option>`, defaults.relation);
+  setLeadChoice(form.elements.grade, typeof gradeChoiceOptions === "function" ? gradeChoiceOptions : (value) => `<option>${escapeHtml(value)}</option>`, defaults.grade);
+  setLeadChoice(form.elements.school, typeof schoolChoiceOptions === "function" ? schoolChoiceOptions : (value) => `<option>${escapeHtml(value)}</option>`, defaults.school);
+  setLeadChoice(form.elements.channel, typeof channelChoiceOptions === "function" ? channelChoiceOptions : (value) => `<option>${escapeHtml(value)}</option>`, defaults.channel);
+  setLeadChoice(form.elements.owner, typeof ownerChoiceOptions === "function" ? ownerChoiceOptions : (value) => `<option>${escapeHtml(value)}</option>`, defaults.owner);
+  setLeadChoice(form.elements.course, typeof courseOptions === "function" ? courseOptions : (value) => `<option>${escapeHtml(value)}</option>`, defaults.course);
+  setLeadChoice(form.elements.intention, leadIntentionOptions, defaults.intention);
+  setLeadChoice(form.elements.note, typeof leadNoteOptions === "function" ? leadNoteOptions : (value) => `<option>${escapeHtml(value)}</option>`, defaults.note);
   if (form.elements.nextFollowUpPreset) {
     form.elements.nextFollowUpPreset.innerHTML = leadDatePresetOptions(leadFollowUpDatePresets(), defaults.nextFollowUpPreset);
+    applyLeadDatePreset(form, "nextFollowUpPreset", "nextFollowUp", leadFollowUpDatePresets());
+  }
+}
+
+function applyLeadSample(form, sampleKey) {
+  if (!form) return;
+  const sample = leadSamplePresets()[sampleKey] || leadSamplePresets().referral;
+  if (form.elements.scenario) {
+    form.elements.scenario.innerHTML = leadScenarioOptions(sample.scenario);
+    form.elements.scenario.value = sample.scenario;
+  }
+  if (form.elements.name) form.elements.name.value = sample.name;
+  if (form.elements.phone) form.elements.phone.value = sample.phone;
+  setLeadChoice(form.elements.relation, typeof relationChoiceOptions === "function" ? relationChoiceOptions : (value) => `<option>${escapeHtml(value)}</option>`, sample.relation);
+  setLeadChoice(form.elements.grade, typeof gradeChoiceOptions === "function" ? gradeChoiceOptions : (value) => `<option>${escapeHtml(value)}</option>`, sample.grade);
+  setLeadChoice(form.elements.school, typeof schoolChoiceOptions === "function" ? schoolChoiceOptions : (value) => `<option>${escapeHtml(value)}</option>`, sample.school);
+  setLeadChoice(form.elements.channel, typeof channelChoiceOptions === "function" ? channelChoiceOptions : (value) => `<option>${escapeHtml(value)}</option>`, sample.channel);
+  setLeadChoice(form.elements.owner, typeof ownerChoiceOptions === "function" ? ownerChoiceOptions : (value) => `<option>${escapeHtml(value)}</option>`, sample.owner);
+  setLeadChoice(form.elements.course, typeof courseOptions === "function" ? courseOptions : (value) => `<option>${escapeHtml(value)}</option>`, sample.course);
+  setLeadChoice(form.elements.intention, leadIntentionOptions, sample.intention);
+  setLeadChoice(form.elements.note, typeof leadNoteOptions === "function" ? leadNoteOptions : (value) => `<option>${escapeHtml(value)}</option>`, sample.note);
+  if (form.elements.nextFollowUpPreset) {
+    form.elements.nextFollowUpPreset.innerHTML = leadDatePresetOptions(leadFollowUpDatePresets(), sample.nextFollowUpPreset);
+    form.elements.nextFollowUpPreset.value = sample.nextFollowUpPreset;
     applyLeadDatePreset(form, "nextFollowUpPreset", "nextFollowUp", leadFollowUpDatePresets());
   }
 }
@@ -356,14 +472,15 @@ function renderLeads() {
 }
 
 function renderLeadForm() {
-  const defaults = leadFormDefaults("referralTrial");
+  const defaults = leadSamplePresets().referral;
   return `
     <form class="master-card" id="leadForm">
       <h4>新增线索</h4>
       <div class="operation-grid compact">
-        <label>咨询场景模板<select name="scenario">${leadScenarioOptions("referralTrial")}</select></label>
-        <label>学员姓名<input name="name" required /></label>
-        <label>手机号<input name="phone" required maxlength="11" /></label>
+        <label>咨询样例<select name="leadSample">${leadSampleOptions("referral")}</select></label>
+        <label>咨询场景模板<select name="scenario">${leadScenarioOptions(defaults.scenario)}</select></label>
+        <label>学员姓名<input name="name" value="${escapeHtml(defaults.name)}" required /></label>
+        <label>手机号<input name="phone" value="${escapeHtml(defaults.phone)}" required maxlength="11" /></label>
         <label>手机号归属<select name="relation">${typeof relationChoiceOptions === "function" ? relationChoiceOptions(defaults.relation) : `<option>${escapeHtml(defaults.relation)}</option>`}</select></label>
         <label>年级<select name="grade" required>${typeof gradeChoiceOptions === "function" ? gradeChoiceOptions(defaults.grade) : `<option>${escapeHtml(defaults.grade)}</option>`}</select></label>
         <label>学校<select name="school">${typeof schoolChoiceOptions === "function" ? schoolChoiceOptions(defaults.school) : `<option>${escapeHtml(defaults.school)}</option>`}</select></label>
@@ -715,6 +832,10 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  if (event.target.name === "leadSample" && event.target.closest("#leadForm")) {
+    applyLeadSample(event.target.form, event.target.value);
+  }
+
   if (event.target.name === "scenario" && event.target.closest("#leadForm")) {
     applyLeadScenario(event.target.form, event.target.value);
   }

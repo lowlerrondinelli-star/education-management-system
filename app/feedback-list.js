@@ -262,11 +262,11 @@ renderFeedback = function renderFeedbackWithFilters() {
         </div>
       </div>
     </section>
-    <section class="section">
+    <section class="section feedback-lessons-panel">
       <div class="section-head compact-head"><h3>课节反馈状态</h3><span class="muted">按筛选条件显示已上课节</span></div>
       ${table(["日期", "班级/对象", "科目", "教师", "反馈状态", "操作"], renderFeedbackLessonRows(completedLessons))}
     </section>
-    <section class="section">
+    <section class="section feedback-records-panel">
       <div class="section-head compact-head"><h3>反馈记录</h3><span class="muted">按学员留存，可导出给教务复盘</span></div>
       ${table(["学员", "课节", "科目教师", "考勤", "表现/风险", "家长话术", "状态", "操作"], renderFeedbackRecordRows(records))}
     </section>`;

@@ -12,7 +12,7 @@ feedbackStyle.textContent = `
   .feedback-quickbar .feedback-actions{align-items:center}
   .feedback-draft-summary{display:flex;gap:6px;flex-wrap:wrap}
   .feedback-student-row{display:grid;grid-template-columns:minmax(120px,.7fr) 130px 110px minmax(180px,1fr);gap:10px;align-items:start;border:1px solid var(--line);border-radius:8px;padding:10px;background:#fff}
-  .feedback-student-row textarea{min-height:72px;resize:vertical}
+  .feedback-student-row select[name^="message:"]{min-height:72px}
   .feedback-dialog-body{padding:0 18px 18px;display:grid;gap:12px;max-height:min(76vh,780px);overflow:auto}
   @media (max-width:1080px){.feedback-layout,.feedback-student-row{grid-template-columns:1fr}}
 `;
@@ -225,11 +225,11 @@ function feedbackDraftCounts(form) {
   form.querySelectorAll('select[name^="risk:"]').forEach((select) => {
     risks[select.value] = Number(risks[select.value] || 0) + 1;
   });
-  form.querySelectorAll('textarea[name^="message:"]').forEach((textarea) => {
-    if (!textarea.value.trim()) missingMessage += 1;
+  form.querySelectorAll('select[name^="message:"]').forEach((select) => {
+    if (!select.value.trim()) missingMessage += 1;
   });
-  form.querySelectorAll('input[name^="homework:"]').forEach((input) => {
-    if (!input.value.trim()) missingHomework += 1;
+  form.querySelectorAll('select[name^="homework:"]').forEach((select) => {
+    if (!select.value.trim()) missingHomework += 1;
   });
   return { performances, risks, missingMessage, missingHomework };
 }
@@ -267,6 +267,39 @@ function feedbackTemplateMessage(studentName, lesson, attendanceStatus, template
   return defaultParentMessage({ name: studentName }, lesson, attendanceStatus);
 }
 
+function feedbackMessageOptions(student, lesson, attendanceStatus, selectedValue) {
+  const studentName = student.name || "学员";
+  return choiceOptions(
+    [
+      selectedValue,
+      defaultParentMessage(student, lesson, attendanceStatus),
+      feedbackTemplateMessage(studentName, lesson, attendanceStatus, "progress"),
+      feedbackTemplateMessage(studentName, lesson, attendanceStatus, "review"),
+      `${studentName} 本节课到课状态良好，建议家长继续督促课后复习和作业完成。`,
+      `${studentName} 本节课有部分知识点掌握不够牢固，建议家长关注错题订正情况。`,
+      `${studentName} 本节课缺勤/状态异常，建议家长和校区尽快确认后续补课安排。`,
+      `${studentName} 近期学习节奏需要继续跟进，建议老师课后与家长保持沟通。`
+    ],
+    selectedValue
+  );
+}
+
+function feedbackHomeworkOptions(selectedValue = "完成课后练习并订正错题。") {
+  return choiceOptions(
+    [
+      selectedValue,
+      "完成课后练习并订正错题。",
+      "复盘本节错题，完成同类型巩固练习。",
+      "背诵并默写本节重点知识点。",
+      "完成讲义剩余题目，下节课前提交。",
+      "整理错题本，标注不懂的问题下次课讲解。",
+      "补看课堂内容，完成基础题训练。",
+      "暂无额外作业，保持复习节奏。"
+    ],
+    selectedValue
+  );
+}
+
 function renderFeedbackDialog(lessonId) {
   ensureFeedbackData();
   const lesson = appState.lessons.find((item) => item.id === lessonId);
@@ -294,8 +327,8 @@ function renderFeedbackDialog(lessonId) {
       <label>续读风险<select name="risk:${escapeHtml(student.id || student.name)}">${feedbackRisks
         .map((item) => `<option ${item === risk ? "selected" : ""}>${escapeHtml(item)}</option>`)
         .join("")}</select></label>
-      <label>家长话术<textarea name="message:${escapeHtml(student.id || student.name)}">${escapeHtml(message)}</textarea></label>
-      <label style="grid-column:1 / -1">课后作业<input name="homework:${escapeHtml(student.id || student.name)}" value="${escapeHtml(homework)}" /></label>
+      <label>家长话术<select name="message:${escapeHtml(student.id || student.name)}">${feedbackMessageOptions(student, lesson, attendanceStatus, message)}</select></label>
+      <label style="grid-column:1 / -1">课后作业<select name="homework:${escapeHtml(student.id || student.name)}">${feedbackHomeworkOptions(homework)}</select></label>
     </div>`;
   });
 
@@ -531,8 +564,8 @@ document.addEventListener("click", (event) => {
   if (homeworkButton) {
     const form = homeworkButton.closest("#feedbackForm");
     if (!form) return;
-    form.querySelectorAll('input[name^="homework:"]').forEach((input) => {
-      input.value = homeworkButton.dataset.feedbackBulkHomework;
+    form.querySelectorAll('select[name^="homework:"]').forEach((select) => {
+      select.value = homeworkButton.dataset.feedbackBulkHomework;
     });
     updateFeedbackDraftSummary(form);
   }
@@ -543,22 +576,22 @@ document.addEventListener("click", (event) => {
     if (!form) return;
     const lesson = appState.lessons.find((item) => item.id === form.dataset.lessonId);
     if (!lesson) return;
-    form.querySelectorAll('textarea[name^="message:"]').forEach((textarea) => {
-      const key = feedbackStudentKeyFromField(textarea);
-      textarea.value = feedbackTemplateMessage(feedbackStudentNameForKey(form, key), lesson, feedbackAttendanceForKey(form, key), templateButton.dataset.feedbackTemplate);
+    form.querySelectorAll('select[name^="message:"]').forEach((select) => {
+      const key = feedbackStudentKeyFromField(select);
+      select.value = feedbackTemplateMessage(feedbackStudentNameForKey(form, key), lesson, feedbackAttendanceForKey(form, key), templateButton.dataset.feedbackTemplate);
     });
     updateFeedbackDraftSummary(form);
   }
 });
 
 document.addEventListener("input", (event) => {
-  if (!event.target.matches('textarea[name^="message:"], input[name^="homework:"]')) return;
+  if (!event.target.matches('select[name^="message:"], select[name^="homework:"]')) return;
   const form = event.target.closest("#feedbackForm");
   if (form) updateFeedbackDraftSummary(form);
 });
 
 document.addEventListener("change", (event) => {
-  if (!event.target.matches('select[name^="performance:"], select[name^="risk:"]')) return;
+  if (!event.target.matches('select[name^="performance:"], select[name^="risk:"], select[name^="message:"], select[name^="homework:"]')) return;
   const form = event.target.closest("#feedbackForm");
   if (form) updateFeedbackDraftSummary(form);
 });

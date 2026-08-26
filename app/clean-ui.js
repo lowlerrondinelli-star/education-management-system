@@ -5,7 +5,14 @@ const cleanUiPanelMeta = {
   classForm: { label: "新增班级", hint: "创建可报名和排课的班级" },
   assignForm: { label: "快速分班", hint: "把学员放入目标班级" },
   lessonForm: { label: "新增排课", hint: "新增单节班课或 1 对 1" },
-  leaveRequestForm: { label: "登记请假", hint: "处理请假和补课建议" }
+  leaveRequestForm: { label: "登记请假", hint: "处理请假和补课建议" },
+  courseForm: { label: "新增课程", hint: "维护报价和课程口径" },
+  teacherForm: { label: "新增教师", hint: "维护教师科目和容量" },
+  roomForm: { label: "新增教室", hint: "维护教室和校区容量" },
+  leadForm: { label: "新增线索", hint: "登记咨询和试听意向" },
+  followUpForm: { label: "新增跟进", hint: "记录回访和下次提醒" },
+  employeeForm: { label: "新增员工", hint: "维护校区人员和岗位" },
+  roleForm: { label: "新增角色", hint: "维护权限模板" }
 };
 
 function cleanUiViewKey() {
@@ -21,6 +28,19 @@ function cleanUiPanelLabel(panel) {
 
 function cleanUiPanelKey(panel, index) {
   return panel.id || `operation-panel-${index}`;
+}
+
+function cleanUiPanelsInBody(body) {
+  const directPanels = [...body.children].filter((child) => child.matches?.(".operation-panel, form.master-card"));
+  const nestedPanels = [...body.querySelectorAll(":scope > .master-grid > form.master-card")];
+  return [...new Set([...directPanels, ...nestedPanels])];
+}
+
+function cleanUiDockAnchor(body, panels) {
+  const firstPanel = panels[0];
+  if (!firstPanel) return null;
+  if (firstPanel.parentElement === body) return firstPanel;
+  return firstPanel.closest(".master-grid") || firstPanel;
 }
 
 function cleanUiActionDock(panels) {
@@ -54,10 +74,11 @@ function cleanUiActionDock(panels) {
 function decorateCleanUiPanels() {
   const bodies = [...appContent.querySelectorAll(".section-body")];
   bodies.forEach((body) => {
-    const panels = [...body.children].filter((child) => child.classList?.contains("operation-panel"));
+    const panels = cleanUiPanelsInBody(body);
     if (!panels.length || body.querySelector(".clean-action-dock")) return;
 
     const activeKey = cleanUiActivePanels[cleanUiViewKey()] || "";
+    body.classList.add("clean-ui-managed");
     panels.forEach((panel, index) => {
       const key = cleanUiPanelKey(panel, index);
       panel.dataset.cleanPanel = key;
@@ -69,7 +90,7 @@ function decorateCleanUiPanels() {
       }
     });
 
-    panels[0].insertAdjacentHTML("beforebegin", cleanUiActionDock(panels));
+    cleanUiDockAnchor(body, panels)?.insertAdjacentHTML("beforebegin", cleanUiActionDock(panels));
   });
 }
 

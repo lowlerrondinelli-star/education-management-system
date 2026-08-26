@@ -443,7 +443,7 @@ button {
 }
 
 .clean-panel-hidden {
-  display: none;
+  display: none !important;
 }
 
 .clean-action-dock {
@@ -501,6 +501,40 @@ button {
 
 .clean-action-close {
   align-self: stretch;
+}
+
+@media (min-width: 1051px) {
+  .section-body.clean-ui-managed {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(190px, 230px);
+    column-gap: 14px;
+    align-items: start;
+  }
+
+  .section-body.clean-ui-managed > :not(.clean-action-dock) {
+    grid-column: 1;
+    min-width: 0;
+  }
+
+  .section-body.clean-ui-managed > .clean-action-dock {
+    grid-column: 2;
+    grid-row: 1 / span 60;
+    position: sticky;
+    top: 14px;
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: 0;
+  }
+
+  .section-body.clean-ui-managed .clean-action-buttons {
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+
+  .section-body.clean-ui-managed .clean-action-button,
+  .section-body.clean-ui-managed .clean-action-close {
+    width: 100%;
+  }
 }
 
 .operation-grid {

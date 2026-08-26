@@ -185,6 +185,61 @@ function orderPackageOptions(courseName, selectedKey = "standard") {
     .join("");
 }
 
+function orderPaymentPlanPresets(packagePreset) {
+  const total = Number(packagePreset.paid || 0) + Number(packagePreset.debt || 0);
+  const deposit = Math.min(total, Math.max(500, Math.round(total * 0.25)));
+  const half = Math.min(total, Math.max(1, Math.round(total / 2)));
+  const discount = Math.max(0, total - Math.min(500, Math.round(total * 0.1)));
+  return {
+    packageDefault: {
+      label: "按套餐默认",
+      paid: packagePreset.paid,
+      debt: packagePreset.debt,
+      note: packagePreset.key === "deposit" ? "报名订单首付款" : "标准报名一次收齐",
+      hint: packagePreset.note
+    },
+    fullPaid: {
+      label: `全款收齐：${money(total)}`,
+      paid: total,
+      debt: 0,
+      note: packagePreset.key === "renewal" ? "续费课包收款" : "标准报名一次收齐",
+      hint: "家长本次一次收齐，应收金额不留欠费。"
+    },
+    depositLock: {
+      label: `订金锁班：先收 ${money(deposit)}`,
+      paid: deposit,
+      debt: Math.max(0, total - deposit),
+      note: "报名订单首付款",
+      hint: "先收订金保留名额，剩余金额进入欠费补缴。"
+    },
+    twoInstallments: {
+      label: `分两期：先收 ${money(half)}`,
+      paid: half,
+      debt: Math.max(0, total - half),
+      note: "分期补缴",
+      hint: "适合家长约定分两次缴费，剩余金额进入后续补缴。"
+    },
+    discountApproved: {
+      label: `优惠收齐：${money(discount)}`,
+      paid: discount,
+      debt: 0,
+      note: "线下收款已核对",
+      hint: "适合校长已审批优惠的订单，本次按优惠后金额收齐。"
+    }
+  };
+}
+
+function selectedOrderPaymentPlan(packagePreset, key = "packageDefault") {
+  const presets = orderPaymentPlanPresets(packagePreset);
+  return presets[key] || presets.packageDefault;
+}
+
+function orderPaymentPlanOptions(packagePreset, selectedValue = "packageDefault") {
+  return Object.entries(orderPaymentPlanPresets(packagePreset))
+    .map(([value, item]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
 function debtPaymentPresets(order) {
   const debt = Number(order.debt || 0);
   const half = Math.max(1, Math.round(debt / 2));
@@ -263,16 +318,32 @@ function applyOrderPackagePreset() {
   const fields = {
     bought: preset.bought,
     gift: preset.gift,
-    paid: preset.paid,
-    debt: preset.debt,
     expireAt: addMonthsToToday(preset.months)
   };
   Object.entries(fields).forEach(([name, value]) => {
     const field = form.elements[name];
     if (field) field.value = value;
   });
+  const paymentPlanSelect = form.querySelector("#orderPaymentPlanSelect");
+  if (paymentPlanSelect) {
+    paymentPlanSelect.innerHTML = orderPaymentPlanOptions(preset, paymentPlanSelect.value || "packageDefault");
+  }
+  applyOrderPaymentPlanPreset(form, preset);
+}
+
+function applyOrderPaymentPlanPreset(form = document.querySelector("#orderForm"), packagePreset) {
+  if (!form) return;
+  const courseName = form.querySelector("#orderCourseSelect")?.value || "";
+  const preset = packagePreset || selectedOrderPackage(courseName, form.querySelector("#orderPackageSelect")?.value);
+  const plan = selectedOrderPaymentPlan(preset, form.querySelector("#orderPaymentPlanSelect")?.value);
+  if (form.elements.paid) form.elements.paid.value = plan.paid;
+  if (form.elements.debt) form.elements.debt.value = plan.debt;
+  if (form.elements.note) {
+    form.elements.note.innerHTML = typeof paymentNoteOptions === "function" ? paymentNoteOptions(plan.note) : `<option>${escapeHtml(plan.note)}</option>`;
+    form.elements.note.value = plan.note;
+  }
   const hint = form.querySelector("[data-order-package-hint]");
-  if (hint) hint.textContent = `${preset.note} 有效期至 ${fields.expireAt}，老师仍可按实际收款微调。`;
+  if (hint) hint.textContent = `${plan.hint} 应收合计 ${money(Number(preset.paid || 0) + Number(preset.debt || 0))}，本次实收 ${money(plan.paid)}，欠费 ${money(plan.debt)}，有效期至 ${form.elements.expireAt?.value || addMonthsToToday(preset.months)}。`;
 }
 
 function refreshOrderPackageChoices() {
@@ -361,6 +432,8 @@ renderOrderQuickForm = function renderOrderQuickFormWithPaymentFields() {
   const defaultClass = defaults.classItem || appState.classes[0] || {};
   const defaultCourse = defaults.course;
   const defaultPackage = selectedOrderPackage(defaultCourse, defaults.packageKey);
+  const defaultPaymentPlanKey = "packageDefault";
+  const defaultPaymentPlan = selectedOrderPaymentPlan(defaultPackage, defaultPaymentPlanKey);
   const defaultMethod = "微信";
   const defaultAccount = typeof paymentAccountForMethod === "function" ? paymentAccountForMethod(defaultMethod) : "微信收款码";
   return `
@@ -374,17 +447,18 @@ renderOrderQuickForm = function renderOrderQuickFormWithPaymentFields() {
         <label>报读班级<select name="className" id="orderClassSelect" required>${classOptions(defaultClass.name || defaults.className)}</select></label>
         <label>报读课程<select name="course" id="orderCourseSelect" required>${courseOptions(defaultCourse)}</select></label>
         <label>报名套餐<select name="package" id="orderPackageSelect">${orderPackageOptions(defaultCourse, defaults.packageKey)}</select></label>
+        <label>付款状态模板<select name="paymentPlan" id="orderPaymentPlanSelect">${orderPaymentPlanOptions(defaultPackage, defaultPaymentPlanKey)}</select></label>
         <label>购买课时<input name="bought" type="number" min="0" step="0.5" value="${escapeHtml(defaultPackage.bought)}" required /></label>
         <label>赠送课时<input name="gift" type="number" min="0" step="0.5" value="${escapeHtml(defaultPackage.gift)}" /></label>
-        <label>实收金额<input name="paid" type="number" min="0" step="1" value="${escapeHtml(defaultPackage.paid)}" required /></label>
-        <label>欠费金额<input name="debt" type="number" min="0" step="1" value="${escapeHtml(defaultPackage.debt)}" /></label>
+        <label>实收金额<input name="paid" type="number" min="0" step="1" value="${escapeHtml(defaultPaymentPlan.paid)}" required /></label>
+        <label>欠费金额<input name="debt" type="number" min="0" step="1" value="${escapeHtml(defaultPaymentPlan.debt)}" /></label>
         <label>有效期至<input name="expireAt" type="date" value="${escapeHtml(addMonthsToToday(defaultPackage.months))}" required /></label>
         <label>收款方式<select name="payMethod">${typeof paymentMethodOptions === "function" ? paymentMethodOptions(defaultMethod) : "<option>微信</option><option>支付宝</option><option>银行转账</option><option>现金</option><option>线下收款</option>"}</select></label>
         <label>收款账户<select name="account">${typeof paymentAccountOptions === "function" ? paymentAccountOptions(defaultAccount) : `<option>${escapeHtml(defaultAccount)}</option>`}</select></label>
-        <label>收款备注<select name="note">${typeof paymentNoteOptions === "function" ? paymentNoteOptions("报名订单首付款") : "<option>报名订单首付款</option>"}</select></label>
+        <label>收款备注<select name="note">${typeof paymentNoteOptions === "function" ? paymentNoteOptions(defaultPaymentPlan.note) : `<option>${escapeHtml(defaultPaymentPlan.note)}</option>`}</select></label>
         <label>支付单号<input name="tradeNo" placeholder="可选" /></label>
         <div class="muted order-recommend-hint" data-order-recommend-hint>${escapeHtml(orderRecommendationHint(defaultStudent, defaults))}</div>
-        <div class="muted order-package-hint" data-order-package-hint>${escapeHtml(`${defaultPackage.note} 有效期至 ${addMonthsToToday(defaultPackage.months)}，老师仍可按实际收款微调。`)}</div>
+        <div class="muted order-package-hint" data-order-package-hint>${escapeHtml(`${defaultPaymentPlan.hint} 应收合计 ${money(Number(defaultPackage.paid || 0) + Number(defaultPackage.debt || 0))}，本次实收 ${money(defaultPaymentPlan.paid)}，欠费 ${money(defaultPaymentPlan.debt)}，有效期至 ${addMonthsToToday(defaultPackage.months)}。`)}</div>
       </div>
       <div class="dialog-actions">
         <span class="muted">有欠费时后续可在订单列表继续补缴。</span>
@@ -594,6 +668,10 @@ document.addEventListener("click", (event) => {
 document.addEventListener("change", (event) => {
   if (event.target.id === "orderPackageSelect") {
     applyOrderPackagePreset();
+  }
+
+  if (event.target.id === "orderPaymentPlanSelect") {
+    applyOrderPaymentPlanPreset(event.target.form || event.target.closest("form"));
   }
 
   if (event.target.name === "studentId" && event.target.closest("#orderForm")) {

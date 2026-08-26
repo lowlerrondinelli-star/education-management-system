@@ -191,6 +191,23 @@ function channelChoiceOptions(selectedValue = "转介绍") {
   );
 }
 
+function schoolChoiceOptions(selectedValue = "暂未确定") {
+  return choiceOptions(
+    [
+      "暂未确定",
+      "实验中学",
+      "第一中学",
+      "育才中学",
+      "和平小学",
+      "示例中学",
+      "校外/待确认",
+      ...(appState.students || []).map((item) => item.school),
+      ...(appState.leads || []).map((item) => item.school)
+    ],
+    selectedValue
+  );
+}
+
 function relationChoiceOptions(selectedValue = "母亲") {
   return choiceOptions(["母亲", "父亲", "本人", "爷爷/奶奶", "外公/外婆", "其他家长"], selectedValue);
 }
@@ -209,6 +226,7 @@ function studentScenarioDefaults(scenario) {
     intent: {
       relation: "母亲",
       grade: "初二年级",
+      school: "暂未确定",
       channel: "转介绍",
       owner: "前台老师",
       course: "初二小组课/一对一",
@@ -219,6 +237,7 @@ function studentScenarioDefaults(scenario) {
     trial: {
       relation: "母亲",
       grade: "初二年级",
+      school: "实验中学",
       channel: "入学测评",
       owner: "前台老师",
       course: "初二小组课/一对一",
@@ -229,6 +248,7 @@ function studentScenarioDefaults(scenario) {
     enrolled: {
       relation: "母亲",
       grade: "初二年级",
+      school: "实验中学",
       channel: "到店咨询",
       owner: "前台老师",
       course: firstClass.course || "初二小组课/一对一",
@@ -239,6 +259,7 @@ function studentScenarioDefaults(scenario) {
     classReady: {
       relation: "母亲",
       grade: "初二年级",
+      school: "暂未确定",
       channel: "到店咨询",
       owner: "前台老师",
       course: firstClass.course || "初二小组课/一对一",
@@ -714,6 +735,7 @@ function refreshStudentFormChoices() {
   const scenarioSelect = document.querySelector("#studentScenarioSelect");
   const relationSelect = document.querySelector("#studentRelationSelect");
   const gradeSelect = document.querySelector("#studentGradeSelect");
+  const schoolSelect = document.querySelector("#studentSchoolSelect");
   const channelSelect = document.querySelector("#studentChannelSelect");
   const ownerSelect = document.querySelector("#studentOwnerSelect");
   const courseSelect = document.querySelector("#studentCourseSelect");
@@ -722,6 +744,7 @@ function refreshStudentFormChoices() {
   const defaults = studentScenarioDefaults(scenarioSelect?.value || "intent");
   if (relationSelect) relationSelect.innerHTML = relationChoiceOptions(relationSelect.value || defaults.relation);
   if (gradeSelect) gradeSelect.innerHTML = gradeChoiceOptions(gradeSelect.value || defaults.grade);
+  if (schoolSelect) schoolSelect.innerHTML = schoolChoiceOptions(schoolSelect.value || defaults.school);
   if (channelSelect) channelSelect.innerHTML = channelChoiceOptions(channelSelect.value || defaults.channel);
   if (ownerSelect) ownerSelect.innerHTML = ownerChoiceOptions(ownerSelect.value || defaults.owner);
   if (courseSelect) courseSelect.innerHTML = courseOptions(courseSelect.value || defaults.course);
@@ -734,6 +757,7 @@ function applyStudentScenario(scenario) {
   const defaults = studentScenarioDefaults(scenario);
   const relationSelect = document.querySelector("#studentRelationSelect");
   const gradeSelect = document.querySelector("#studentGradeSelect");
+  const schoolSelect = document.querySelector("#studentSchoolSelect");
   const channelSelect = document.querySelector("#studentChannelSelect");
   const ownerSelect = document.querySelector("#studentOwnerSelect");
   const courseSelect = document.querySelector("#studentCourseSelect");
@@ -741,6 +765,7 @@ function applyStudentScenario(scenario) {
   const classSelect = document.querySelector("#studentClassSelect");
   if (relationSelect) relationSelect.innerHTML = relationChoiceOptions(defaults.relation);
   if (gradeSelect) gradeSelect.innerHTML = gradeChoiceOptions(defaults.grade);
+  if (schoolSelect) schoolSelect.innerHTML = schoolChoiceOptions(defaults.school);
   if (channelSelect) channelSelect.innerHTML = channelChoiceOptions(defaults.channel);
   if (ownerSelect) ownerSelect.innerHTML = ownerChoiceOptions(defaults.owner);
   if (courseSelect) courseSelect.innerHTML = courseOptions(defaults.course);
@@ -1427,7 +1452,7 @@ function addStudent(formData) {
     phone: formData.get("phone").trim(),
     relation: text(formData.get("relation")).trim() || "母亲",
     grade: formData.get("grade").trim(),
-    school: "",
+    school: text(formData.get("school")).trim() || "暂未确定",
     channel: formData.get("channel").trim(),
     owner: formData.get("owner").trim(),
     course: formData.get("course").trim(),

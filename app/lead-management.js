@@ -268,7 +268,7 @@ function renderLeadForm() {
         <label>手机号<input name="phone" required maxlength="11" /></label>
         <label>手机号归属<select name="relation"><option>母亲</option><option>父亲</option><option>本人</option><option>其他</option></select></label>
         <label>年级<select name="grade" required>${typeof gradeChoiceOptions === "function" ? gradeChoiceOptions("初一年级") : "<option>初一年级</option>"}</select></label>
-        <label>学校<input name="school" placeholder="可选" /></label>
+        <label>学校<select name="school">${typeof schoolChoiceOptions === "function" ? schoolChoiceOptions("暂未确定") : "<option>暂未确定</option>"}</select></label>
         <label>来源渠道<select name="channel">${leadSources.map((item) => `<option>${escapeHtml(item)}</option>`).join("")}</select></label>
         <label>负责人<select name="owner" required>${typeof ownerChoiceOptions === "function" ? ownerChoiceOptions("前台老师") : "<option>前台老师</option>"}</select></label>
         <label>意向课程<select name="course" required>${typeof courseOptions === "function" ? courseOptions("初二小组课/一对一") : "<option>数学同步课</option>"}</select></label>

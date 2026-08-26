@@ -187,6 +187,8 @@ function enrollmentBuildRow(lead, student) {
     owner,
     name: student?.name || lead?.name || "未命名",
     phone: student?.phone || lead?.phone || "",
+    grade: student?.grade || lead?.grade || "",
+    school: student?.school || lead?.school || "",
     course: student?.course || lead?.course || "",
     className: student?.className || "待分班",
     nextLesson
@@ -284,7 +286,7 @@ function renderEnrollmentRows(rows) {
     const orderText = row.orders.length ? `${row.orders.length} 笔订单 / 欠费 ${row.debt ? money(row.debt) : "无"}` : "暂无订单";
     const lessonText = row.nextLesson ? `${row.nextLesson.date} ${row.nextLesson.time}` : "暂无未来课节";
     return `<tr>
-      <td><strong>${escapeHtml(row.name)}</strong><br><span class="muted">${escapeHtml(row.phone)} · ${escapeHtml(source)}</span></td>
+      <td><strong>${escapeHtml(row.name)}</strong><br><span class="muted">${escapeHtml(row.phone)} · ${escapeHtml(source)}</span><br><span class="muted">${escapeHtml(row.grade || "未填年级")} / ${escapeHtml(row.school || "未填学校")}</span></td>
       <td>
         <div class="enrollment-stage">
           ${tag(meta.label, meta.tone)}

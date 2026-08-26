@@ -188,7 +188,7 @@ function renderStudentOpsRows(students) {
     const lessonText = nextLesson ? `${nextLesson.date} ${nextLesson.time}` : "暂无未来课节";
 
     return `<tr>
-      <td><strong>${escapeHtml(student.name)}</strong><br><span class="muted">${escapeHtml(student.phone)} · ${escapeHtml(student.relation)}</span></td>
+      <td><strong>${escapeHtml(student.name)}</strong><br><span class="muted">${escapeHtml(student.phone)} · ${escapeHtml(student.relation)}</span><br><span class="muted">${escapeHtml(student.grade || "未填年级")} / ${escapeHtml(student.school || "未填学校")}</span></td>
       <td>${escapeHtml(student.owner || "未分配")}<br><span class="muted">${escapeHtml(student.className || "待分班")}</span></td>
       <td>${tag(`余额 ${student.balance}`, Number(student.balance || 0) <= 3 && Number(student.balance || 0) > 0 ? "amber" : "green")}<br>${debt ? tag(`欠费 ${money(debt)}`, "red") : tag("无欠费", "green")}</td>
       <td><strong>${escapeHtml(lessonText)}</strong><br><span class="muted">${escapeHtml(followText)}</span></td>
@@ -223,7 +223,7 @@ function prependStudentOpsPanel() {
       <div class="section-body">
         ${renderStudentOpsSummary(allStudents, visibleStudents)}
         ${renderStudentOpsToolbar()}
-        ${table(["学员", "负责人/班级", "课时资金", "最近动态", "建议动作", "操作"], renderStudentOpsRows(visibleStudents))}
+        ${table(["学员/学校", "负责人/班级", "课时资金", "最近动态", "建议动作", "操作"], renderStudentOpsRows(visibleStudents))}
       </div>
     </section>`
   );

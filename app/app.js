@@ -419,6 +419,31 @@ function applyLessonDatePreset(form) {
   if (form.elements.date) form.elements.date.value = preset.date;
 }
 
+function lessonSubjectFromClass(classItem, fallback = "数学") {
+  if (!classItem) return fallback;
+  const course = (appState.courses || []).find((item) => item.name === classItem.course);
+  if (course?.subject) return course.subject;
+  const source = `${classItem.course || ""} ${classItem.name || ""}`;
+  const subject = ["数学", "语文", "英语", "物理", "化学"].find((item) => source.includes(item));
+  return subject || classItem.course || fallback;
+}
+
+function setChoiceField(field, value, optionsBuilder) {
+  if (!field) return;
+  if (field.tagName === "SELECT" && typeof optionsBuilder === "function") {
+    field.innerHTML = optionsBuilder(value);
+  }
+  field.value = value;
+}
+
+function syncLessonTargetDefaults(form) {
+  const classItem = getClass(form?.elements?.target?.value);
+  if (!form || !classItem) return;
+  setChoiceField(form.elements.subject, lessonSubjectFromClass(classItem, form.elements.subject?.value || "数学"), typeof subjectChoiceOptions === "function" ? subjectChoiceOptions : null);
+  setChoiceField(form.elements.teacher, classItem.teacher || form.elements.teacher?.value || "任课老师", typeof teacherChoiceOptions === "function" ? teacherChoiceOptions : null);
+  setChoiceField(form.elements.room, classItem.room || form.elements.room?.value || "默认教室", typeof roomChoiceOptions === "function" ? roomChoiceOptions : null);
+}
+
 function followUpNoteOptions(selectedValue = "家长约定周五补缴") {
   return choiceOptions(
     [
@@ -1724,6 +1749,10 @@ document.addEventListener("change", (event) => {
 
   if (event.target.name === "lessonDatePreset" && event.target.closest("#lessonForm")) {
     applyLessonDatePreset(event.target.form || event.target.closest("form"));
+  }
+
+  if (event.target.name === "target" && (event.target.closest("#lessonForm") || event.target.closest("#batchScheduleForm"))) {
+    syncLessonTargetDefaults(event.target.form || event.target.closest("form"));
   }
 });
 

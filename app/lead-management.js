@@ -279,6 +279,34 @@ function updateLeadStatus(id, status, result = status) {
   setView("leads");
 }
 
+function leadTrialMatchedClass(lead) {
+  const course = text(lead.course).trim();
+  if (!course) return null;
+  return (appState.classes || []).find((item) => text(item.course).trim() === course || text(item.course).includes(course) || course.includes(text(item.course)));
+}
+
+function leadTrialSubjectValue(lead) {
+  const course = text(lead.course).trim();
+  const matchedCourse = (appState.courses || []).find((item) => text(item.name).trim() === course || text(item.name).includes(course) || course.includes(text(item.name)));
+  if (matchedCourse?.subject) return matchedCourse.subject;
+  if (course.includes("语文")) return "语文";
+  if (course.includes("英语")) return "英语";
+  if (course.includes("物理")) return "物理";
+  if (course.includes("化学")) return "化学";
+  return "数学";
+}
+
+function leadTrialTeacherValue(lead) {
+  const matchedClass = leadTrialMatchedClass(lead);
+  if (matchedClass?.teacher) return matchedClass.teacher;
+  return lead.owner || appState.teachers?.[0]?.name || "前台老师";
+}
+
+function leadTrialRoomValue(lead) {
+  const matchedClass = leadTrialMatchedClass(lead);
+  return matchedClass?.room || "试听教室";
+}
+
 function renderLeadTrialDialog(id) {
   ensureLeadData();
   const lead = appState.leads.find((item) => item.id === id);
@@ -298,9 +326,9 @@ function renderLeadTrialDialog(id) {
         <label>试听日期<input name="date" type="date" value="${leadDateOffset(1)}" required /></label>
         <label>开始时间<input name="startTime" type="time" value="${start}" required /></label>
         <label>结束时间<input name="endTime" type="time" value="${end}" required /></label>
-        <label>试听科目<input name="subject" value="${escapeHtml(lead.course || "试听课")}" required /></label>
-        <label>试听老师<input name="teacher" value="${escapeHtml(lead.owner || "前台老师")}" required /></label>
-        <label>教室<input name="room" value="试听教室" required /></label>
+        <label>试听科目<select name="subject" required>${typeof subjectChoiceOptions === "function" ? subjectChoiceOptions(leadTrialSubjectValue(lead)) : `<option>${escapeHtml(leadTrialSubjectValue(lead))}</option>`}</select></label>
+        <label>试听老师<select name="teacher" required>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(leadTrialTeacherValue(lead)) : `<option>${escapeHtml(leadTrialTeacherValue(lead))}</option>`}</select></label>
+        <label>教室<select name="room" required>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(leadTrialRoomValue(lead)) : `<option>${escapeHtml(leadTrialRoomValue(lead))}</option>`}</select></label>
       </div>
       <label class="stack-item">备注<input name="note" value="招生试听课，试听后回访报名意向" /></label>
       <div class="dialog-actions">

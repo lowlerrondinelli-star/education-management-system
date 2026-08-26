@@ -204,6 +204,48 @@ function ownerChoiceOptions(selectedValue = "前台老师") {
   );
 }
 
+function subjectChoiceOptions(selectedValue = "数学") {
+  return choiceOptions(
+    [
+      "数学",
+      "语文",
+      "英语",
+      "物理",
+      "化学",
+      ...(appState.courses || []).map((item) => item.subject),
+      ...(appState.lessons || []).map((item) => item.subject)
+    ],
+    selectedValue
+  );
+}
+
+function teacherChoiceOptions(selectedValue = "前台老师") {
+  return choiceOptions(
+    [
+      "前台老师",
+      ...(appState.teachers || []).map((item) => item.name),
+      ...(appState.employees || [])
+        .filter((item) => item.isTeacher === "是" || text(item.roles).includes("教师") || text(item.role).includes("教师"))
+        .map((item) => item.name),
+      ...(appState.classes || []).map((item) => item.teacher),
+      ...(appState.lessons || []).map((item) => item.teacher)
+    ],
+    selectedValue
+  );
+}
+
+function roomChoiceOptions(selectedValue = "试听教室") {
+  return choiceOptions(
+    [
+      "试听教室",
+      ...(appState.rooms || []).map((item) => item.name),
+      ...(appState.classes || []).map((item) => item.room),
+      ...(appState.lessons || []).map((item) => item.room)
+    ],
+    selectedValue
+  );
+}
+
 function refreshStudentFormChoices() {
   const gradeSelect = document.querySelector("#studentGradeSelect");
   const channelSelect = document.querySelector("#studentChannelSelect");

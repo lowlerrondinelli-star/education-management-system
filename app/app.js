@@ -467,6 +467,23 @@ function roomChoiceOptions(selectedValue = "试听教室") {
   );
 }
 
+function roomNoteOptions(selectedValue = "初中小班优先") {
+  return choiceOptions(
+    [
+      "初中小班优先",
+      "高中理科",
+      "冲刺班",
+      "直播课",
+      "一对一教室",
+      "自习托管",
+      "投影白板齐全",
+      "临时备用教室",
+      ...(appState.rooms || []).map((item) => item.note)
+    ],
+    selectedValue
+  );
+}
+
 function refreshStudentFormChoices() {
   const gradeSelect = document.querySelector("#studentGradeSelect");
   const channelSelect = document.querySelector("#studentChannelSelect");

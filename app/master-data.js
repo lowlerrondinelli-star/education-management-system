@@ -295,7 +295,7 @@ function renderRoomForm() {
         <label>校区<select name="campus" required>${campusChoiceOptions("主校区")}</select></label>
         <label>容量<input name="capacity" type="number" min="1" value="12" /></label>
         <label>教室类型<select name="type"><option>线下教室</option><option>线上教室</option><option>自习室</option></select></label>
-        <label>备注<input name="note" placeholder="适合班型或设备" /></label>
+        <label>备注<select name="note">${roomNoteOptions("初中小班优先")}</select></label>
       </div>
       <button class="primary-action" type="submit">保存教室</button>
     </form>`;

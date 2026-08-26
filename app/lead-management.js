@@ -76,6 +76,102 @@ function applyLeadDatePreset(form, presetName, inputName, presets) {
   if (form.elements[inputName]) form.elements[inputName].value = preset.date;
 }
 
+function leadScenarioPresets() {
+  return {
+    referralTrial: {
+      label: "转介绍试听咨询",
+      relation: "母亲",
+      grade: "初一年级",
+      school: "实验中学",
+      channel: "转介绍",
+      owner: "前台老师",
+      course: "初二小组课/一对一",
+      intention: "高",
+      nextFollowUpPreset: "today",
+      note: "同学家长介绍，建议优先安排测评。"
+    },
+    walkInHot: {
+      label: "到店高意向报名",
+      relation: "母亲",
+      grade: "初二年级",
+      school: "暂未确定",
+      channel: "到店咨询",
+      owner: "前台老师",
+      course: "初二小组课/一对一",
+      intention: "高",
+      nextFollowUpPreset: "tomorrow",
+      note: "高意向咨询，建议当天邀约试听。"
+    },
+    onlineNurture: {
+      label: "线上咨询待培养",
+      relation: "母亲",
+      grade: "初一年级",
+      school: "校外/待确认",
+      channel: "小红书直连",
+      owner: "前台老师",
+      course: "初一数学同步",
+      intention: "中",
+      nextFollowUpPreset: "threeDays",
+      note: "家长关注班型和上课时间，需电话回访。"
+    },
+    assessmentInvite: {
+      label: "测评后邀约试听",
+      relation: "父亲",
+      grade: "高一年级",
+      school: "第一中学",
+      channel: "入学测评",
+      owner: "校长-奚老师",
+      course: "高一物理提高班",
+      intention: "高",
+      nextFollowUpPreset: "today",
+      note: "学生基础薄弱，建议先做入学测评。"
+    },
+    priceCompare: {
+      label: "比价观望跟进",
+      relation: "母亲",
+      grade: "初二年级",
+      school: "暂未确定",
+      channel: "招生表单",
+      owner: "前台老师",
+      course: "初二小组课/一对一",
+      intention: "低",
+      nextFollowUpPreset: "week",
+      note: "家长比价中，需同步课程优势和优惠政策。"
+    }
+  };
+}
+
+function leadScenarioOptions(selectedValue = "referralTrial") {
+  return Object.entries(leadScenarioPresets())
+    .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function leadIntentionOptions(selectedValue = "高") {
+  return leadIntentions.map((item) => `<option value="${escapeHtml(item)}" ${item === selectedValue ? "selected" : ""}>${escapeHtml(item)}</option>`).join("");
+}
+
+function leadFormDefaults(scenario) {
+  return leadScenarioPresets()[scenario] || leadScenarioPresets().referralTrial;
+}
+
+function applyLeadScenario(form, scenario) {
+  if (!form) return;
+  const defaults = leadFormDefaults(scenario);
+  if (form.elements.relation) form.elements.relation.innerHTML = typeof relationChoiceOptions === "function" ? relationChoiceOptions(defaults.relation) : `<option>${escapeHtml(defaults.relation)}</option>`;
+  if (form.elements.grade) form.elements.grade.innerHTML = typeof gradeChoiceOptions === "function" ? gradeChoiceOptions(defaults.grade) : `<option>${escapeHtml(defaults.grade)}</option>`;
+  if (form.elements.school) form.elements.school.innerHTML = typeof schoolChoiceOptions === "function" ? schoolChoiceOptions(defaults.school) : `<option>${escapeHtml(defaults.school)}</option>`;
+  if (form.elements.channel) form.elements.channel.innerHTML = typeof channelChoiceOptions === "function" ? channelChoiceOptions(defaults.channel) : `<option>${escapeHtml(defaults.channel)}</option>`;
+  if (form.elements.owner) form.elements.owner.innerHTML = typeof ownerChoiceOptions === "function" ? ownerChoiceOptions(defaults.owner) : `<option>${escapeHtml(defaults.owner)}</option>`;
+  if (form.elements.course) form.elements.course.innerHTML = typeof courseOptions === "function" ? courseOptions(defaults.course) : `<option>${escapeHtml(defaults.course)}</option>`;
+  if (form.elements.intention) form.elements.intention.innerHTML = leadIntentionOptions(defaults.intention);
+  if (form.elements.note) form.elements.note.innerHTML = typeof leadNoteOptions === "function" ? leadNoteOptions(defaults.note) : `<option>${escapeHtml(defaults.note)}</option>`;
+  if (form.elements.nextFollowUpPreset) {
+    form.elements.nextFollowUpPreset.innerHTML = leadDatePresetOptions(leadFollowUpDatePresets(), defaults.nextFollowUpPreset);
+    applyLeadDatePreset(form, "nextFollowUpPreset", "nextFollowUp", leadFollowUpDatePresets());
+  }
+}
+
 function ensureLeadData() {
   if (!Array.isArray(appState.leads)) {
     appState.leads = [
@@ -260,23 +356,25 @@ function renderLeads() {
 }
 
 function renderLeadForm() {
+  const defaults = leadFormDefaults("referralTrial");
   return `
     <form class="master-card" id="leadForm">
       <h4>新增线索</h4>
       <div class="operation-grid compact">
+        <label>咨询场景模板<select name="scenario">${leadScenarioOptions("referralTrial")}</select></label>
         <label>学员姓名<input name="name" required /></label>
         <label>手机号<input name="phone" required maxlength="11" /></label>
-        <label>手机号归属<select name="relation"><option>母亲</option><option>父亲</option><option>本人</option><option>其他</option></select></label>
-        <label>年级<select name="grade" required>${typeof gradeChoiceOptions === "function" ? gradeChoiceOptions("初一年级") : "<option>初一年级</option>"}</select></label>
-        <label>学校<select name="school">${typeof schoolChoiceOptions === "function" ? schoolChoiceOptions("暂未确定") : "<option>暂未确定</option>"}</select></label>
-        <label>来源渠道<select name="channel">${leadSources.map((item) => `<option>${escapeHtml(item)}</option>`).join("")}</select></label>
-        <label>负责人<select name="owner" required>${typeof ownerChoiceOptions === "function" ? ownerChoiceOptions("前台老师") : "<option>前台老师</option>"}</select></label>
-        <label>意向课程<select name="course" required>${typeof courseOptions === "function" ? courseOptions("初二小组课/一对一") : "<option>数学同步课</option>"}</select></label>
-        <label>意向度<select name="intention">${leadIntentions.map((item) => `<option>${escapeHtml(item)}</option>`).join("")}</select></label>
-        <label>跟进日期模板<select name="nextFollowUpPreset">${leadDatePresetOptions(leadFollowUpDatePresets(), "tomorrow")}</select></label>
-        <label>下次跟进<input name="nextFollowUp" type="date" value="${leadDateOffset(1)}" required /></label>
+        <label>手机号归属<select name="relation">${typeof relationChoiceOptions === "function" ? relationChoiceOptions(defaults.relation) : `<option>${escapeHtml(defaults.relation)}</option>`}</select></label>
+        <label>年级<select name="grade" required>${typeof gradeChoiceOptions === "function" ? gradeChoiceOptions(defaults.grade) : `<option>${escapeHtml(defaults.grade)}</option>`}</select></label>
+        <label>学校<select name="school">${typeof schoolChoiceOptions === "function" ? schoolChoiceOptions(defaults.school) : `<option>${escapeHtml(defaults.school)}</option>`}</select></label>
+        <label>来源渠道<select name="channel">${typeof channelChoiceOptions === "function" ? channelChoiceOptions(defaults.channel) : leadSources.map((item) => `<option>${escapeHtml(item)}</option>`).join("")}</select></label>
+        <label>负责人<select name="owner" required>${typeof ownerChoiceOptions === "function" ? ownerChoiceOptions(defaults.owner) : `<option>${escapeHtml(defaults.owner)}</option>`}</select></label>
+        <label>意向课程<select name="course" required>${typeof courseOptions === "function" ? courseOptions(defaults.course) : `<option>${escapeHtml(defaults.course)}</option>`}</select></label>
+        <label>意向度<select name="intention">${leadIntentionOptions(defaults.intention)}</select></label>
+        <label>跟进日期模板<select name="nextFollowUpPreset">${leadDatePresetOptions(leadFollowUpDatePresets(), defaults.nextFollowUpPreset)}</select></label>
+        <label>下次跟进<input name="nextFollowUp" type="date" value="${leadToday()}" required /></label>
       </div>
-      <label class="stack-item">备注<select name="note">${typeof leadNoteOptions === "function" ? leadNoteOptions("家长想先试听，关注价格和上课时间。") : "<option>家长想先试听，关注价格和上课时间。</option>"}</select></label>
+      <label class="stack-item">备注<select name="note">${typeof leadNoteOptions === "function" ? leadNoteOptions(defaults.note) : `<option>${escapeHtml(defaults.note)}</option>`}</select></label>
       <button class="primary-action" type="submit">保存线索</button>
     </form>`;
 }
@@ -577,6 +675,10 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  if (event.target.name === "scenario" && event.target.closest("#leadForm")) {
+    applyLeadScenario(event.target.form, event.target.value);
+  }
+
   if (event.target.name === "nextFollowUpPreset" && event.target.closest("#leadForm")) {
     applyLeadDatePreset(event.target.form, "nextFollowUpPreset", "nextFollowUp", leadFollowUpDatePresets());
   }

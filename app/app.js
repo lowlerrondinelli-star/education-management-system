@@ -562,6 +562,95 @@ function classStatusOptions(selectedValue = "招生中") {
   return choiceOptions(["招生中", "开课中", "已满班", "已结课", ...(appState.classes || []).map((item) => item.status)], selectedValue);
 }
 
+function classTemplatePresets() {
+  return {
+    standardSmall: { label: "标准小班（12人，扣1课时）", capacity: 12, deduct: 1, teacherHours: 1, suffix: "A班", status: "招生中" },
+    activeSmall: { label: "开课小班（16人，扣1课时）", capacity: 16, deduct: 1, teacherHours: 1, suffix: "A班", status: "开课中" },
+    premium: { label: "提高班（12人，扣1.5课时）", capacity: 12, deduct: 1.5, teacherHours: 1.5, suffix: "提高班", status: "招生中" },
+    sprint: { label: "冲刺班（20人，扣1课时）", capacity: 20, deduct: 1, teacherHours: 1, suffix: "冲刺班", status: "招生中", stage: "冲刺班" },
+    oneToOne: { label: "一对一班（1人，扣1课时）", capacity: 1, deduct: 1, teacherHours: 1, suffix: "一对一", status: "招生中" },
+    lecture: { label: "大班/讲座（60人，扣0.5课时）", capacity: 60, deduct: 0.5, teacherHours: 1, suffix: "讲座班", status: "招生中" },
+    custom: { label: "自定义班型", custom: true }
+  };
+}
+
+function classTemplateOptions(selectedValue = "standardSmall") {
+  return Object.entries(classTemplatePresets())
+    .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function classStageShort(stage) {
+  const value = text(stage);
+  if (value.includes("春")) return "春";
+  if (value.includes("暑")) return "暑";
+  if (value.includes("秋")) return "秋";
+  if (value.includes("寒")) return "寒";
+  if (value.includes("冲刺")) return "冲刺";
+  if (value.includes("长期")) return "长期";
+  return value.replace("班", "") || "秋";
+}
+
+function classGradeShort(grade) {
+  return text(grade).replace("年级", "").replace("小学", "小").trim();
+}
+
+function classCourseLabel(courseName) {
+  const course = (appState.courses || []).find((item) => item.name === courseName);
+  if (course?.grade || course?.subject) return `${classGradeShort(course.grade)}${text(course.subject).trim()}`.trim();
+  return text(courseName)
+    .replace("/一对一", "")
+    .replace("小组课", "")
+    .replace("同步班", "")
+    .replace("常规课程", "常规")
+    .trim() || "新班";
+}
+
+function classYearShort() {
+  const source = typeof todayIsoDate === "function" ? todayIsoDate() : localLessonDate(new Date());
+  return source.slice(2, 4);
+}
+
+function nextClassName(baseName, preset) {
+  const existing = new Set((appState.classes || []).map((item) => item.name));
+  if (!existing.has(baseName)) return baseName;
+  if (preset?.suffix === "A班") {
+    for (const letter of ["B", "C", "D", "E", "F"]) {
+      const candidate = baseName.replace(/A班$/, `${letter}班`);
+      if (!existing.has(candidate)) return candidate;
+    }
+  }
+  for (let index = 2; index <= 9; index += 1) {
+    const candidate = `${baseName}-${index}`;
+    if (!existing.has(candidate)) return candidate;
+  }
+  return `${baseName}-${Date.now().toString().slice(-4)}`;
+}
+
+function buildClassName(courseName, stage, templateKey = "standardSmall") {
+  const preset = classTemplatePresets()[templateKey] || classTemplatePresets().standardSmall;
+  const stageLabel = classStageShort(preset.stage || stage);
+  const base = `${classYearShort()}${stageLabel}${classCourseLabel(courseName)}`;
+  const suffix = preset.suffix || "A班";
+  return nextClassName(`${base}${suffix}`, preset);
+}
+
+function applyClassTemplate(form, forceName = false) {
+  const preset = classTemplatePresets()[form?.elements?.template?.value] || classTemplatePresets().standardSmall;
+  if (!form || preset.custom) return;
+  if (preset.stage && form.elements.stage) form.elements.stage.value = preset.stage;
+  if (form.elements.capacity) form.elements.capacity.value = preset.capacity;
+  if (form.elements.deduct) form.elements.deduct.value = preset.deduct;
+  if (form.elements.teacherHours) form.elements.teacherHours.value = preset.teacherHours;
+  if (form.elements.status) form.elements.status.value = preset.status;
+  const generatedName = buildClassName(form.elements.course?.value, form.elements.stage?.value, form.elements.template?.value);
+  const nameInput = form.elements.name;
+  if (nameInput && (forceName || !nameInput.value || nameInput.value === nameInput.dataset.autoName)) {
+    nameInput.value = generatedName;
+    nameInput.dataset.autoName = generatedName;
+  }
+}
+
 function subjectChoiceOptions(selectedValue = "数学") {
   return choiceOptions(
     [
@@ -993,19 +1082,23 @@ function renderAssignPanel() {
 
 function renderClassCreateForm() {
   const defaultClass = appState.classes[0] || {};
+  const defaultCourse = defaultClass.course || appState.courses?.[0]?.name || "常规课程";
+  const defaultStage = defaultClass.stage || "秋季班";
+  const defaultName = buildClassName(defaultCourse, defaultStage, "standardSmall");
   return `
     <form class="operation-panel" id="classForm">
       <div>
         <strong>新增班级</strong>
-        <span class="muted">课程、教师、助教和教室优先从基础资料选择，减少后续排课口径不一致。</span>
+        <span class="muted">选择班级模板后会自动生成班名、容量、扣课和教师课时。</span>
       </div>
       <div class="operation-grid">
-        <label>班级名称<input name="name" required placeholder="例如 25秋初一数学A班" /></label>
-        <label>关联课程<select name="course" required>${courseOptions(defaultClass.course || "常规课程")}</select></label>
+        <label>班级模板<select name="template" id="classTemplateSelect">${classTemplateOptions("standardSmall")}</select></label>
+        <label>班级名称<input name="name" value="${escapeHtml(defaultName)}" data-auto-name="${escapeHtml(defaultName)}" required placeholder="例如 26秋初一数学A班" /></label>
+        <label>关联课程<select name="course" id="classCourseSelect" required>${courseOptions(defaultCourse)}</select></label>
         <label>任课教师<select name="teacher" required>${teacherChoiceOptions(defaultClass.teacher || "任课老师")}</select></label>
         <label>助教<select name="assistant">${ownerChoiceOptions(defaultClass.assistant || "前台老师")}</select></label>
         <label>教室<select name="room" required>${roomChoiceOptions(defaultClass.room || "默认教室")}</select></label>
-        <label>班型阶段<select name="stage" required>${classStageOptions(defaultClass.stage || "秋季班")}</select></label>
+        <label>班型阶段<select name="stage" id="classStageSelect" required>${classStageOptions(defaultStage)}</select></label>
         <label>满班人数<input name="capacity" type="number" min="1" value="12" required /></label>
         <label>学生扣课<input name="deduct" type="number" min="0" step="0.5" value="1" required /></label>
         <label>教师课时<input name="teacherHours" type="number" min="0" step="0.5" value="1" required /></label>
@@ -1561,6 +1654,14 @@ document.addEventListener("change", (event) => {
 
   if (event.target.id === "studentClassSelect") {
     syncStudentClassCourse();
+  }
+
+  if (event.target.id === "classTemplateSelect") {
+    applyClassTemplate(event.target.form || event.target.closest("form"), true);
+  }
+
+  if (event.target.id === "classCourseSelect" || event.target.id === "classStageSelect") {
+    applyClassTemplate(event.target.form || event.target.closest("form"));
   }
 
   if (event.target.name === "timeSlot") {

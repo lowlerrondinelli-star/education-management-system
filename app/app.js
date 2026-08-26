@@ -1159,6 +1159,37 @@ function openOrdersForClass(className) {
   setView("orders");
 }
 
+function openOrdersForStudent(studentId) {
+  const student = appState.students.find((item) => item.id === studentId);
+  if (!student) return;
+  searchTerm = student.name;
+  if (globalSearch) globalSearch.value = student.name;
+  selectedStudentForOrder = student.id;
+  setNotice("orders", `已筛选 ${student.name} 的订单与课时账户，可直接核对报名、补缴和余额。`, "amber");
+  setView("orders");
+}
+
+function openScheduleForStudent(studentId) {
+  const student = appState.students.find((item) => item.id === studentId);
+  if (!student) return;
+  const keyword = getClass(student.className) ? student.className : student.name;
+  searchTerm = keyword;
+  if (globalSearch) globalSearch.value = keyword;
+  setNotice("schedule", `已按 ${keyword} 筛选课表，可直接点名、反馈或补排课。`, "amber");
+  setView("schedule");
+}
+
+function openLeadRecord(leadId) {
+  if (typeof ensureLeadData === "function") ensureLeadData();
+  const lead = appState.leads?.find((item) => item.id === leadId);
+  const keyword = lead?.phone || lead?.name || "";
+  if (!keyword) return;
+  searchTerm = keyword;
+  if (globalSearch) globalSearch.value = keyword;
+  setNotice("leads", `已定位 ${lead?.name || "该线索"}，可继续联系、试听或转学员。`, "amber");
+  setView("leads");
+}
+
 function openFollowUpFormForStudent(studentId) {
   if (!studentId) return;
   selectedStudentForFollowUp = studentId;
@@ -2035,12 +2066,22 @@ document.addEventListener("click", (event) => {
   const orderShortcut = event.target.closest("[data-student-order]");
   if (orderShortcut) {
     selectedStudentForOrder = orderShortcut.dataset.studentOrder;
+    searchTerm = "";
+    if (globalSearch) globalSearch.value = "";
     setView("orders");
   }
+
+  const studentOrdersButton = event.target.closest("[data-student-orders]");
+  if (studentOrdersButton) openOrdersForStudent(studentOrdersButton.dataset.studentOrders);
+
+  const studentScheduleButton = event.target.closest("[data-student-schedule]");
+  if (studentScheduleButton) openScheduleForStudent(studentScheduleButton.dataset.studentSchedule);
 
   const classShortcut = event.target.closest("[data-student-class]");
   if (classShortcut) {
     selectedStudentForClass = classShortcut.dataset.studentClass;
+    searchTerm = "";
+    if (globalSearch) globalSearch.value = "";
     selectedClassForAssign = "";
     setView("classes");
   }
@@ -2050,6 +2091,9 @@ document.addEventListener("click", (event) => {
 
   const classOrdersButton = event.target.closest("[data-class-orders]");
   if (classOrdersButton) openOrdersForClass(classOrdersButton.dataset.classOrders);
+
+  const leadRecordButton = event.target.closest("[data-lead-record]");
+  if (leadRecordButton) openLeadRecord(leadRecordButton.dataset.leadRecord);
 
   if (event.target.id === "newStudentInline" || event.target.id === "newStudentBtn") {
     refreshStudentFormChoices();

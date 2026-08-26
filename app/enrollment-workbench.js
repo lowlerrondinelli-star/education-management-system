@@ -267,16 +267,16 @@ function renderEnrollmentSteps(row) {
 function renderEnrollmentActions(row) {
   if (!row.student) {
     return `<button class="small-button" type="button" data-enrollment-convert-lead="${escapeHtml(row.lead?.id || "")}">转学员</button>
-      <button class="small-button" type="button" data-go="leads">线索</button>`;
+      <button class="small-button" type="button" data-lead-record="${escapeHtml(row.lead?.id || "")}">线索记录</button>`;
   }
   if (row.stage === "order") return `<button class="small-button" type="button" data-student-order="${escapeHtml(row.student.id)}">报名</button><button class="small-button" type="button" data-student-detail="${escapeHtml(row.student.id)}">详情</button>`;
   if (row.stage === "payment") {
     const debtOrder = row.orders.find((order) => Number(order.debt || 0) > 0);
-    return `<button class="small-button" type="button" data-pay-order="${escapeHtml(debtOrder?.id || "")}" ${debtOrder ? "" : "disabled"}>补缴</button><button class="small-button" type="button" data-go="orders">订单</button>`;
+    return `<button class="small-button" type="button" data-pay-order="${escapeHtml(debtOrder?.id || "")}" ${debtOrder ? "" : "disabled"}>补缴</button><button class="small-button" type="button" data-student-orders="${escapeHtml(row.student.id)}">学员订单</button>`;
   }
-  if (row.stage === "class") return `<button class="small-button" type="button" data-student-class="${escapeHtml(row.student.id)}">分班</button><button class="small-button" type="button" data-go="classes">班级</button>`;
-  if (row.stage === "schedule") return `<button class="small-button" type="button" data-enrollment-schedule="${escapeHtml(row.className)}">排课</button><button class="small-button" type="button" data-go="schedule">课表</button>`;
-  return `<button class="small-button" type="button" data-student-detail="${escapeHtml(row.student.id)}">详情</button><button class="small-button" type="button" data-go="schedule">课表</button>`;
+  if (row.stage === "class") return `<button class="small-button" type="button" data-student-class="${escapeHtml(row.student.id)}">分班</button><button class="small-button" type="button" data-student-orders="${escapeHtml(row.student.id)}">学员订单</button>`;
+  if (row.stage === "schedule") return `<button class="small-button" type="button" data-enrollment-schedule="${escapeHtml(row.className)}">排课</button><button class="small-button" type="button" data-student-schedule="${escapeHtml(row.student.id)}">上课课表</button>`;
+  return `<button class="small-button" type="button" data-student-detail="${escapeHtml(row.student.id)}">详情</button><button class="small-button" type="button" data-student-schedule="${escapeHtml(row.student.id)}">上课课表</button>`;
 }
 
 function renderEnrollmentRows(rows) {

@@ -195,23 +195,32 @@ renderLessonForm = function renderLessonFormWithMasterData() {
   if (!appState.courses?.length || !appState.teachers?.length || !appState.rooms?.length) return baseRenderLessonForm();
   const defaultClass = appState.classes[0] || {};
   const defaultDate = typeof lessonDatePresetValue === "function" ? lessonDatePresetValue("nextMonday") : "2026-09-07";
+  const recommendation = typeof lessonTargetRecommendation === "function" ? lessonTargetRecommendation(defaultClass) : {
+    subject: defaultClass.course || "数学",
+    teacher: defaultClass.teacher || "任课老师",
+    room: defaultClass.room || "默认教室",
+    time: "18:30-20:00",
+    timeSlot: "18:30-20:00"
+  };
+  const [defaultStartTime, defaultEndTime] = text(recommendation.time || "18:30-20:00").split("-").map((part) => part.trim());
   return `
     <form class="operation-panel" id="lessonForm">
       <div>
         <strong>新增课节</strong>
-        <span class="muted">教师、教室和科目来自基础资料，保存前会检查同一时间冲突。</span>
+        <span class="muted">选择班级后自动带出科目、老师、教室和推荐时间，保存前会检查冲突。</span>
       </div>
       <div class="operation-grid">
         <label>日期模板<select name="lessonDatePreset">${typeof lessonDatePresetOptions === "function" ? lessonDatePresetOptions("nextMonday") : "<option value=\"custom\">自定义日期</option>"}</select></label>
         <label>上课日期<input name="date" type="date" value="${escapeHtml(defaultDate)}" required /></label>
-        <label>上课时间段<select name="timeSlot" id="lessonTimeSlotSelect">${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions("18:30-20:00") : "<option value=\"18:30-20:00\">晚一 18:30-20:00</option>"}</select></label>
-        <label>开始时间<input name="startTime" type="time" value="18:30" required /></label>
-        <label>结束时间<input name="endTime" type="time" value="20:00" required /></label>
+        <label>上课时间段<select name="timeSlot" id="lessonTimeSlotSelect">${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions(recommendation.timeSlot) : "<option value=\"18:30-20:00\">晚一 18:30-20:00</option>"}</select></label>
+        <label>开始时间<input name="startTime" type="time" value="${escapeHtml(defaultStartTime || "18:30")}" required /></label>
+        <label>结束时间<input name="endTime" type="time" value="${escapeHtml(defaultEndTime || "20:00")}" required /></label>
         <label>班级/对象<select name="target" id="lessonTargetSelect" required>${classOptions(defaultClass.name)}</select></label>
-        <label>科目<select name="subject" id="lessonSubjectSelect" required>${masterOptions(appState.courses, "subject", defaultClass.course)}</select></label>
-        <label>上课教师<select name="teacher" id="lessonTeacherSelect" required>${masterOptions(appState.teachers, "name", defaultClass.teacher)}</select></label>
-        <label>上课教室<select name="room" id="lessonRoomSelect" required>${masterOptions(appState.rooms, "name", defaultClass.room)}</select></label>
+        <label>科目<select name="subject" id="lessonSubjectSelect" required>${masterOptions(appState.courses, "subject", recommendation.subject)}</select></label>
+        <label>上课教师<select name="teacher" id="lessonTeacherSelect" required>${masterOptions(appState.teachers, "name", recommendation.teacher)}</select></label>
+        <label>上课教室<select name="room" id="lessonRoomSelect" required>${masterOptions(appState.rooms, "name", recommendation.room)}</select></label>
         <label>课节类型<select name="type"><option>班级课</option><option>1对1</option></select></label>
+        <div class="form-wide muted" data-lesson-recommendation-hint>${escapeHtml(typeof lessonRecommendationHint === "function" ? lessonRecommendationHint(defaultClass, recommendation) : "选择班级后自动带出推荐排课默认项。")}</div>
       </div>
       <div class="dialog-actions">
         <span class="muted">确认上课后会自动扣除对应学员课时。</span>
@@ -596,15 +605,7 @@ document.addEventListener("change", (event) => {
   }
 
   if (event.target.id !== "lessonTargetSelect") return;
-  const classItem = getClass(event.target.value);
-  if (!classItem) return;
-  const subjectSelect = document.querySelector("#lessonSubjectSelect");
-  const teacherSelect = document.querySelector("#lessonTeacherSelect");
-  const roomSelect = document.querySelector("#lessonRoomSelect");
-  const courseItem = appState.courses.find((item) => item.name === classItem.course);
-  if (subjectSelect && courseItem?.subject) subjectSelect.value = courseItem.subject;
-  if (teacherSelect) teacherSelect.value = classItem.teacher;
-  if (roomSelect) roomSelect.value = classItem.room;
+  syncLessonTargetDefaults(event.target.form || event.target.closest("form"));
 });
 
 saveState();

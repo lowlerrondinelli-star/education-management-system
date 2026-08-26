@@ -165,6 +165,14 @@ function renderBatchSchedulePanel() {
   ensureScheduleBatchData();
   const dates = defaultBatchDates();
   const defaultClass = appState.classes.find((item) => item.status === "开课中") || appState.classes[0] || {};
+  const recommendation = typeof lessonTargetRecommendation === "function" ? lessonTargetRecommendation(defaultClass) : {
+    subject: batchSubjectValue(defaultClass),
+    teacher: defaultClass.teacher || "任课老师",
+    room: defaultClass.room || "默认教室",
+    time: "18:30-20:00",
+    timeSlot: "18:30-20:00"
+  };
+  const [defaultStartTime, defaultEndTime] = text(recommendation.time || "18:30-20:00").split("-").map((part) => part.trim());
   const historyRows = appState.scheduleBatches.slice(0, 3).map(
     (item) => `<div class="batch-history-item">
       <strong>${escapeHtml(item.target)} ${escapeHtml(item.time)} ${tag(`新增 ${item.createdCount}`, item.skippedCount ? "amber" : "green")}</strong>
@@ -186,12 +194,13 @@ function renderBatchSchedulePanel() {
         <label>开始日期<input name="startDate" type="date" value="${dates.start}" required /></label>
         <label>结束日期<input name="endDate" type="date" value="${dates.end}" required /></label>
         <label>课节类型<select name="type"><option>班级课</option><option>1对1</option></select></label>
-        <label>上课时间段<select name="timeSlot">${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions("18:30-20:00") : "<option value=\"18:30-20:00\">晚一 18:30-20:00</option>"}</select></label>
-        <label>开始时间<input name="startTime" type="time" value="18:30" required /></label>
-        <label>结束时间<input name="endTime" type="time" value="20:00" required /></label>
-        <label>上课教师<select name="teacher" required>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(defaultClass.teacher || "任课老师") : `<option>${escapeHtml(defaultClass.teacher || "任课老师")}</option>`}</select></label>
-        <label>上课教室<select name="room" required>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(defaultClass.room || "默认教室") : `<option>${escapeHtml(defaultClass.room || "默认教室")}</option>`}</select></label>
-        <label>科目<select name="subject" required>${typeof subjectChoiceOptions === "function" ? subjectChoiceOptions(batchSubjectValue(defaultClass)) : `<option>${escapeHtml(batchSubjectValue(defaultClass))}</option>`}</select></label>
+        <label>上课时间段<select name="timeSlot">${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions(recommendation.timeSlot) : "<option value=\"18:30-20:00\">晚一 18:30-20:00</option>"}</select></label>
+        <label>开始时间<input name="startTime" type="time" value="${escapeHtml(defaultStartTime || "18:30")}" required /></label>
+        <label>结束时间<input name="endTime" type="time" value="${escapeHtml(defaultEndTime || "20:00")}" required /></label>
+        <label>上课教师<select name="teacher" required>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(recommendation.teacher) : `<option>${escapeHtml(recommendation.teacher)}</option>`}</select></label>
+        <label>上课教室<select name="room" required>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(recommendation.room) : `<option>${escapeHtml(recommendation.room)}</option>`}</select></label>
+        <label>科目<select name="subject" required>${typeof subjectChoiceOptions === "function" ? subjectChoiceOptions(recommendation.subject) : `<option>${escapeHtml(recommendation.subject)}</option>`}</select></label>
+        <div class="form-wide muted" data-schedule-recommendation-hint>${escapeHtml(typeof lessonRecommendationHint === "function" ? lessonRecommendationHint(defaultClass, recommendation) : "选择班级后自动带出推荐排课默认项。")}</div>
       </div>
       <div class="weekday-picker" aria-label="选择星期">${weekdayCheckboxes()}</div>
       <div class="dialog-actions">
@@ -273,15 +282,7 @@ document.addEventListener("submit", (event) => {
 
 document.addEventListener("change", (event) => {
   if (event.target.closest("#batchScheduleForm") && event.target.name === "target") {
-    const form = event.target.closest("#batchScheduleForm");
-    const classItem = getClass(event.target.value);
-    if (!form || !classItem) return;
-    if (typeof teacherChoiceOptions === "function") form.elements.teacher.innerHTML = teacherChoiceOptions(classItem.teacher || form.elements.teacher.value);
-    else form.elements.teacher.value = classItem.teacher || form.elements.teacher.value;
-    if (typeof roomChoiceOptions === "function") form.elements.room.innerHTML = roomChoiceOptions(classItem.room || form.elements.room.value);
-    else form.elements.room.value = classItem.room || form.elements.room.value;
-    if (typeof subjectChoiceOptions === "function") form.elements.subject.innerHTML = subjectChoiceOptions(batchSubjectValue(classItem));
-    else form.elements.subject.value = batchSubjectValue(classItem);
+    syncLessonTargetDefaults(event.target.form || event.target.closest("form"));
   }
 });
 

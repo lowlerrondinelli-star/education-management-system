@@ -342,7 +342,13 @@ function scheduleReasonOptions(kind = "reschedule", selectedValue = "") {
 }
 
 function lessonTimeSlotOptions(selectedValue = "18:30-20:00") {
-  const slots = [
+  return lessonTimeSlotCatalog()
+    .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
+    .join("");
+}
+
+function lessonTimeSlotCatalog() {
+  return [
     ["08:30-10:00", "上午一 08:30-10:00"],
     ["10:10-11:40", "上午二 10:10-11:40"],
     ["13:30-15:00", "下午一 13:30-15:00"],
@@ -354,9 +360,6 @@ function lessonTimeSlotOptions(selectedValue = "18:30-20:00") {
     ["20:10-21:40", "晚三 20:10-21:40"],
     ["custom", "自定义时间"]
   ];
-  return slots
-    .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
-    .join("");
 }
 
 function applyLessonTimeSlot(form) {
@@ -428,6 +431,52 @@ function lessonSubjectFromClass(classItem, fallback = "数学") {
   return subject || classItem.course || fallback;
 }
 
+function lessonSlotValueFromRange(range) {
+  const value = text(range).trim();
+  if (!value.includes("-")) return "";
+  return lessonTimeSlotCatalog().some(([slot]) => slot === value) ? value : "custom";
+}
+
+function classLessonHistory(classItem) {
+  if (!classItem) return [];
+  return appState.lessons.filter((lesson) => lesson.target === classItem.name);
+}
+
+function mostUsedLessonTime(classItem) {
+  const counts = new Map();
+  for (const lesson of classLessonHistory(classItem)) {
+    const time = text(lesson.time).trim();
+    if (time) counts.set(time, (counts.get(time) || 0) + 1);
+  }
+  return [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "zh-CN"))[0]?.[0] || "";
+}
+
+function fallbackLessonTime(classItem) {
+  const source = `${classItem?.name || ""} ${classItem?.course || ""} ${classItem?.room || ""}`;
+  if (source.includes("一对一")) return "17:00-18:00";
+  if (source.includes("小升初") || source.includes("小学") || source.includes("线上")) return "18:30-20:00";
+  if (source.includes("高中") || source.includes("高一") || source.includes("高二") || source.includes("高三") || source.includes("物理")) return "19:00-20:30";
+  return "18:30-20:00";
+}
+
+function lessonTargetRecommendation(classItem) {
+  const historyTime = mostUsedLessonTime(classItem);
+  const time = historyTime || fallbackLessonTime(classItem);
+  return {
+    subject: lessonSubjectFromClass(classItem),
+    teacher: classItem?.teacher || "任课老师",
+    room: classItem?.room || "默认教室",
+    time,
+    timeSlot: lessonSlotValueFromRange(time),
+    reason: historyTime ? "按该班已有课表时间带出" : "按班型和课程习惯带出"
+  };
+}
+
+function lessonRecommendationHint(classItem, recommendation = lessonTargetRecommendation(classItem)) {
+  if (!classItem) return "请选择班级/对象，系统会自动带出科目、老师、教室和推荐时间段。";
+  return `${classItem.name}：${recommendation.reason}，推荐 ${recommendation.time}，${recommendation.teacher} / ${recommendation.room}。`;
+}
+
 function setChoiceField(field, value, optionsBuilder) {
   if (!field) return;
   if (field.tagName === "SELECT" && typeof optionsBuilder === "function") {
@@ -439,9 +488,20 @@ function setChoiceField(field, value, optionsBuilder) {
 function syncLessonTargetDefaults(form) {
   const classItem = getClass(form?.elements?.target?.value);
   if (!form || !classItem) return;
-  setChoiceField(form.elements.subject, lessonSubjectFromClass(classItem, form.elements.subject?.value || "数学"), typeof subjectChoiceOptions === "function" ? subjectChoiceOptions : null);
-  setChoiceField(form.elements.teacher, classItem.teacher || form.elements.teacher?.value || "任课老师", typeof teacherChoiceOptions === "function" ? teacherChoiceOptions : null);
-  setChoiceField(form.elements.room, classItem.room || form.elements.room?.value || "默认教室", typeof roomChoiceOptions === "function" ? roomChoiceOptions : null);
+  const recommendation = lessonTargetRecommendation(classItem);
+  setChoiceField(form.elements.subject, recommendation.subject, typeof subjectChoiceOptions === "function" ? subjectChoiceOptions : null);
+  setChoiceField(form.elements.teacher, recommendation.teacher, typeof teacherChoiceOptions === "function" ? teacherChoiceOptions : null);
+  setChoiceField(form.elements.room, recommendation.room, typeof roomChoiceOptions === "function" ? roomChoiceOptions : null);
+  if (form.elements.timeSlot) {
+    setChoiceField(form.elements.timeSlot, recommendation.timeSlot, typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions : null);
+  }
+  if (recommendation.time.includes("-")) {
+    const [start, end] = recommendation.time.split("-").map((part) => part.trim());
+    if (form.elements.startTime) form.elements.startTime.value = start;
+    if (form.elements.endTime) form.elements.endTime.value = end;
+  }
+  const hint = form.querySelector("[data-lesson-recommendation-hint], [data-schedule-recommendation-hint]");
+  if (hint) hint.textContent = lessonRecommendationHint(classItem, recommendation);
 }
 
 function followUpNoteOptions(selectedValue = "家长约定周五补缴") {

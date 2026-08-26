@@ -191,6 +191,65 @@ function channelChoiceOptions(selectedValue = "转介绍") {
   );
 }
 
+function relationChoiceOptions(selectedValue = "母亲") {
+  return choiceOptions(["母亲", "父亲", "本人", "爷爷/奶奶", "外公/外婆", "其他家长"], selectedValue);
+}
+
+function studentStatusChoiceOptions(selectedValue = "意向") {
+  return choiceOptions(["意向", "已报名", "停课", "结课"], selectedValue);
+}
+
+function studentClassChoiceOptions(selectedValue = "待分班") {
+  return choiceOptions(["待分班", ...(appState.classes || []).map((item) => item.name)], selectedValue);
+}
+
+function studentScenarioDefaults(scenario) {
+  const firstClass = appState.classes?.[0] || {};
+  const defaults = {
+    intent: {
+      relation: "母亲",
+      grade: "初二年级",
+      channel: "转介绍",
+      owner: "前台老师",
+      course: "初二小组课/一对一",
+      status: "意向",
+      className: "待分班",
+      hint: "意向咨询会先进入报名办理台，后续再报名、分班和排课。"
+    },
+    trial: {
+      relation: "母亲",
+      grade: "初二年级",
+      channel: "入学测评",
+      owner: "前台老师",
+      course: "初二小组课/一对一",
+      status: "意向",
+      className: "待分班",
+      hint: "试听预约会保留意向状态，方便招生老师试听后当天回访。"
+    },
+    enrolled: {
+      relation: "母亲",
+      grade: "初二年级",
+      channel: "到店咨询",
+      owner: "前台老师",
+      course: firstClass.course || "初二小组课/一对一",
+      status: "已报名",
+      className: "待分班",
+      hint: "已报名待分班会直接进入分班和首次排课处理。"
+    },
+    classReady: {
+      relation: "母亲",
+      grade: "初二年级",
+      channel: "到店咨询",
+      owner: "前台老师",
+      course: firstClass.course || "初二小组课/一对一",
+      status: "已报名",
+      className: firstClass.name || "待分班",
+      hint: "已确定班级会同步课程和班级，保存后可直接进入排课。"
+    }
+  };
+  return defaults[scenario] || defaults.intent;
+}
+
 function ownerChoiceOptions(selectedValue = "前台老师") {
   return choiceOptions(
     [
@@ -485,14 +544,63 @@ function roomNoteOptions(selectedValue = "初中小班优先") {
 }
 
 function refreshStudentFormChoices() {
+  const scenarioSelect = document.querySelector("#studentScenarioSelect");
+  const relationSelect = document.querySelector("#studentRelationSelect");
   const gradeSelect = document.querySelector("#studentGradeSelect");
   const channelSelect = document.querySelector("#studentChannelSelect");
   const ownerSelect = document.querySelector("#studentOwnerSelect");
   const courseSelect = document.querySelector("#studentCourseSelect");
-  if (gradeSelect) gradeSelect.innerHTML = gradeChoiceOptions(gradeSelect.value || "初二年级");
-  if (channelSelect) channelSelect.innerHTML = channelChoiceOptions(channelSelect.value || "转介绍");
-  if (ownerSelect) ownerSelect.innerHTML = ownerChoiceOptions(ownerSelect.value || "前台老师");
-  if (courseSelect) courseSelect.innerHTML = courseOptions(courseSelect.value || "初二小组课/一对一");
+  const statusSelect = document.querySelector("#studentStatusSelect");
+  const classSelect = document.querySelector("#studentClassSelect");
+  const defaults = studentScenarioDefaults(scenarioSelect?.value || "intent");
+  if (relationSelect) relationSelect.innerHTML = relationChoiceOptions(relationSelect.value || defaults.relation);
+  if (gradeSelect) gradeSelect.innerHTML = gradeChoiceOptions(gradeSelect.value || defaults.grade);
+  if (channelSelect) channelSelect.innerHTML = channelChoiceOptions(channelSelect.value || defaults.channel);
+  if (ownerSelect) ownerSelect.innerHTML = ownerChoiceOptions(ownerSelect.value || defaults.owner);
+  if (courseSelect) courseSelect.innerHTML = courseOptions(courseSelect.value || defaults.course);
+  if (statusSelect) statusSelect.innerHTML = studentStatusChoiceOptions(statusSelect.value || defaults.status);
+  if (classSelect) classSelect.innerHTML = studentClassChoiceOptions(classSelect.value || defaults.className);
+  refreshStudentScenarioHint();
+}
+
+function applyStudentScenario(scenario) {
+  const defaults = studentScenarioDefaults(scenario);
+  const relationSelect = document.querySelector("#studentRelationSelect");
+  const gradeSelect = document.querySelector("#studentGradeSelect");
+  const channelSelect = document.querySelector("#studentChannelSelect");
+  const ownerSelect = document.querySelector("#studentOwnerSelect");
+  const courseSelect = document.querySelector("#studentCourseSelect");
+  const statusSelect = document.querySelector("#studentStatusSelect");
+  const classSelect = document.querySelector("#studentClassSelect");
+  if (relationSelect) relationSelect.innerHTML = relationChoiceOptions(defaults.relation);
+  if (gradeSelect) gradeSelect.innerHTML = gradeChoiceOptions(defaults.grade);
+  if (channelSelect) channelSelect.innerHTML = channelChoiceOptions(defaults.channel);
+  if (ownerSelect) ownerSelect.innerHTML = ownerChoiceOptions(defaults.owner);
+  if (courseSelect) courseSelect.innerHTML = courseOptions(defaults.course);
+  if (statusSelect) statusSelect.innerHTML = studentStatusChoiceOptions(defaults.status);
+  if (classSelect) classSelect.innerHTML = studentClassChoiceOptions(defaults.className);
+  syncStudentClassCourse();
+  refreshStudentScenarioHint();
+}
+
+function syncStudentClassCourse() {
+  const classSelect = document.querySelector("#studentClassSelect");
+  const courseSelect = document.querySelector("#studentCourseSelect");
+  const statusSelect = document.querySelector("#studentStatusSelect");
+  const classItem = getClass(classSelect?.value);
+  if (classItem?.course && courseSelect) courseSelect.innerHTML = courseOptions(classItem.course);
+  if (classItem && statusSelect) statusSelect.innerHTML = studentStatusChoiceOptions("已报名");
+  refreshStudentScenarioHint();
+}
+
+function refreshStudentScenarioHint() {
+  const scenarioSelect = document.querySelector("#studentScenarioSelect");
+  const classSelect = document.querySelector("#studentClassSelect");
+  const hint = document.querySelector("#studentScenarioHint");
+  if (!hint) return;
+  const defaults = studentScenarioDefaults(scenarioSelect?.value || "intent");
+  const classItem = getClass(classSelect?.value);
+  hint.textContent = classItem ? `已选择 ${classItem.name}，课程会自动带出为 ${classItem.course}，保存后可进入首次排课。` : defaults.hint;
 }
 
 function getClass(name) {
@@ -1139,18 +1247,20 @@ function addStudent(formData) {
     id: `S${String(nextNumber).padStart(3, "0")}`,
     name: formData.get("name").trim(),
     phone: formData.get("phone").trim(),
-    relation: "母亲",
+    relation: text(formData.get("relation")).trim() || "母亲",
     grade: formData.get("grade").trim(),
     school: "",
     channel: formData.get("channel").trim(),
     owner: formData.get("owner").trim(),
     course: formData.get("course").trim(),
-    className: "待分班",
-    status: "意向",
+    className: text(formData.get("className")).trim() || "待分班",
+    status: text(formData.get("status")).trim() || "意向",
     balance: 0,
     debt: 0
   };
   appState.students.unshift(student);
+  syncClassCounts();
+  setNotice("students", `${student.name} 已建档：${student.status} / ${student.className || "待分班"}。`);
   saveState();
   setView("students");
 }
@@ -1358,6 +1468,14 @@ document.addEventListener("change", (event) => {
     const courseSelect = document.querySelector("#orderCourseSelect");
     const classItem = getClass(event.target.value);
     if (courseSelect && classItem?.course) courseSelect.value = classItem.course;
+  }
+
+  if (event.target.id === "studentScenarioSelect") {
+    applyStudentScenario(event.target.value);
+  }
+
+  if (event.target.id === "studentClassSelect") {
+    syncStudentClassCourse();
   }
 });
 

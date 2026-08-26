@@ -840,6 +840,11 @@ tr:hover td {
   font-weight: 700;
 }
 
+.form-wide {
+  grid-column: 1 / -1;
+  line-height: 1.55;
+}
+
 .form-grid input {
   min-height: 40px;
   border: 1px solid var(--line);

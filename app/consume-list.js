@@ -63,6 +63,23 @@ consumeListStyle.textContent = `
     margin-top: 6px;
   }
 
+  .consume-pending-advice {
+    margin-top: 8px;
+    display: grid;
+    gap: 6px;
+    color: var(--muted);
+  }
+
+  .consume-pending-advice strong {
+    color: var(--ink);
+  }
+
+  .consume-pending-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
   @media (max-width: 650px) {
     .consume-filter-toolbar,
     .consume-filter-toolbar label,
@@ -259,6 +276,79 @@ function consumePendingSummary(rows) {
     </div>`;
 }
 
+function consumePendingAttendanceRecord(lesson) {
+  return appState.attendance?.find((item) => item.lessonId === lesson.id);
+}
+
+function consumePendingRiskStudents(students) {
+  return students.filter((student) => Number(student.debt || 0) > 0 || Number(student.balance || 0) <= 0);
+}
+
+function consumePendingReadyPreview(lesson) {
+  const record = consumePendingAttendanceRecord(lesson);
+  const deduct = typeof lessonDeduct === "function" ? lessonDeduct(lesson) : Number(lesson.deduct || 1);
+  const studentsById = new Map(appState.students.map((student) => [student.id, student]));
+  const rows = (record?.records || []).map((item) => {
+    const student = studentsById.get(item.studentId);
+    const before = consumeNumber(student?.balance ?? item.balance);
+    const shouldDeduct = typeof canDeductAttendance === "function" ? canDeductAttendance(item.status) : item.status === "到课" || item.status === "迟到";
+    const change = shouldDeduct ? Math.min(before, deduct) : 0;
+    return {
+      debt: Number(student?.debt || 0),
+      before,
+      change,
+      shouldDeduct,
+      shortage: shouldDeduct && before < deduct
+    };
+  });
+  const deductCount = rows.filter((row) => row.shouldDeduct).length;
+  const holdCount = rows.length - deductCount;
+  const totalChange = rows.reduce((sum, row) => sum + row.change, 0);
+  const riskCount = rows.filter((row) => row.shortage || row.debt > 0).length;
+  return { rows, deductCount, holdCount, totalChange, riskCount };
+}
+
+function consumePendingPlan(lesson, status) {
+  const students = typeof lessonStudents === "function" ? lessonStudents(lesson) : [];
+  if (status.key === "ready") {
+    const preview = consumePendingReadyPreview(lesson);
+    const scenario = preview.riskCount ? "riskHold" : "attendance";
+    return {
+      action: "consume",
+      scenario,
+      title: preview.riskCount ? "建议：欠费/零课时学员先不扣" : "建议：按点名结果消课",
+      detail: `预计消课 ${preview.deductCount} 人，合计 ${preview.totalChange} 课时；${preview.holdCount} 人不扣课。`,
+      tags: [
+        tag(`消课 ${preview.deductCount} 人`, "green"),
+        tag(`不扣 ${preview.holdCount} 人`, preview.holdCount ? "amber" : "green"),
+        preview.riskCount ? tag(`需核对 ${preview.riskCount} 人`, "red") : tag("余额正常", "green")
+      ]
+    };
+  }
+
+  const riskStudents = consumePendingRiskStudents(students);
+  const scenario = riskStudents.length ? "riskLeave" : "normal";
+  return {
+    action: "attendance",
+    scenario,
+    title: riskStudents.length ? "建议：欠费/零课时学员先请假" : "建议：常规上课全部到课",
+    detail: `先完成点名，再进入消课确认；当前名单 ${students.length} 人。`,
+    tags: [
+      tag(`名单 ${students.length} 人`, students.length ? "green" : "amber"),
+      tag("待点名", "red"),
+      riskStudents.length ? tag(`资金风险 ${riskStudents.length} 人`, "red") : tag("无资金风险", "green")
+    ]
+  };
+}
+
+function renderConsumePendingAdvice(plan) {
+  return `<div class="consume-pending-advice">
+    <strong>${escapeHtml(plan.title)}</strong>
+    <span>${escapeHtml(plan.detail)}</span>
+    <div class="consume-pending-tags">${plan.tags.join("")}</div>
+  </div>`;
+}
+
 function renderConsumePendingRows(rows) {
   if (!rows.length) {
     return `<div class="stack-item"><strong>暂无待消课课节</strong><span class="muted">当前没有需要补点名或确认消课的课节。</span></div>`;
@@ -269,6 +359,7 @@ function renderConsumePendingRows(rows) {
       const status = consumePendingLessonStatus(lesson);
       const studentCount = typeof lessonStudents === "function" ? lessonStudents(lesson).length : 0;
       const attendanceText = typeof attendanceSummary === "function" ? attendanceSummary(lesson) : status.label;
+      const plan = consumePendingPlan(lesson, status);
       return `<article class="consume-pending-card">
         <div>
           <strong>${escapeHtml(lesson.date)} ${escapeHtml(lesson.time)} ${escapeHtml(lesson.target)}</strong>
@@ -277,10 +368,11 @@ function renderConsumePendingRows(rows) {
             ${tag(`${studentCount} 名学员`, studentCount ? "green" : "amber")}
             <span class="muted">${escapeHtml(lesson.subject)} / ${escapeHtml(lesson.teacher)} / ${escapeHtml(attendanceText)}</span>
           </div>
+          ${renderConsumePendingAdvice(plan)}
         </div>
         <div class="action-row">
-          <button class="small-button" type="button" data-attendance-lesson="${escapeHtml(lesson.id)}">点名</button>
-          <button class="small-button" type="button" data-finish-lesson="${escapeHtml(lesson.id)}" ${status.key === "ready" ? "" : "disabled"}>确认消课</button>
+          <button class="small-button" type="button" data-attendance-lesson="${escapeHtml(lesson.id)}" data-attendance-scenario="${escapeHtml(plan.action === "attendance" ? plan.scenario : "")}">${plan.action === "attendance" ? "按建议点名" : "查看点名"}</button>
+          <button class="small-button" type="button" data-finish-lesson="${escapeHtml(lesson.id)}" data-consume-scenario="${escapeHtml(plan.action === "consume" ? plan.scenario : "attendance")}" ${status.key === "ready" ? "" : "disabled"}>${plan.action === "consume" ? "按建议消课" : "确认消课"}</button>
         </div>
       </article>`;
     })

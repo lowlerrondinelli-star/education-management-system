@@ -255,11 +255,17 @@ function consumeConfirmSummary(rows) {
   const skippedRows = rows.length - deductedRows.length;
   const totalChange = deductedRows.reduce((sum, row) => sum + row.change, 0);
   const shortage = deductedRows.filter((row) => row.before < row.deduct).length;
+  const debt = rows.filter((row) => row.debt > 0).length;
+  const riskTag = debt
+    ? tag(`欠费 ${debt} 人`, "red")
+    : shortage
+      ? tag(`课时不足 ${shortage} 人`, "red")
+      : tag("余额正常", "green");
   return `<div class="attendance-draft-summary">
     ${tag(`消课 ${deductedRows.length} 人`, "green")}
     ${tag(`不消课 ${skippedRows} 人`, skippedRows ? "amber" : "green")}
     ${tag(`合计 ${totalChange} 课时`, "green")}
-    ${shortage ? tag(`课时不足 ${shortage} 人`, "red") : tag("余额正常", "green")}
+    ${riskTag}
   </div>`;
 }
 
@@ -303,10 +309,11 @@ function applyConsumeConfirmScenario(lesson, scenario) {
   record.updatedAt = new Date().toLocaleString("zh-CN", { hour12: false });
 }
 
-function renderConsumeConfirmDialog(lessonId) {
+function renderConsumeConfirmDialog(lessonId, preferredScenario = "attendance") {
   const lesson = appState.lessons.find((item) => item.id === lessonId);
   if (!lesson || lesson.status === "已上课") return;
-  const rows = consumeConfirmRows(lesson, "attendance");
+  const scenario = consumeConfirmScenarioOptions(preferredScenario).includes(`value="${escapeHtml(preferredScenario)}"`) ? preferredScenario : "attendance";
+  const rows = consumeConfirmRows(lesson, scenario);
   attendanceDialogBody.innerHTML = `
     <form method="dialog" id="consumeConfirmForm" data-lesson-id="${escapeHtml(lesson.id)}">
       <div class="dialog-head">
@@ -318,7 +325,7 @@ function renderConsumeConfirmDialog(lessonId) {
         <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
       </div>
       <div class="attendance-quickbar">
-        <label>消课场景模板<select name="consumeScenario">${consumeConfirmScenarioOptions("attendance")}</select></label>
+        <label>消课场景模板<select name="consumeScenario">${consumeConfirmScenarioOptions(scenario)}</select></label>
         <div data-consume-confirm-summary>${consumeConfirmSummary(rows)}</div>
       </div>
       <div class="consume-confirm-list" data-consume-confirm-list>${renderConsumeConfirmRows(rows)}</div>
@@ -372,10 +379,11 @@ renderSchedule = function renderScheduleWithAttendance() {
     </section>`;
 };
 
-function renderAttendanceDialog(lessonId) {
+function renderAttendanceDialog(lessonId, preferredScenario = "") {
   const lesson = appState.lessons.find((item) => item.id === lessonId);
   if (!lesson) return;
   const record = attendanceForLesson(lesson);
+  const scenario = attendanceScenarioOptions(preferredScenario).includes(`value="${escapeHtml(preferredScenario)}"`) ? preferredScenario : "normal";
   const studentsById = new Map(appState.students.map((student) => [student.id, student]));
   const initialCounts = {
     到课: record.records.filter((item) => item.status === "到课").length,
@@ -394,7 +402,7 @@ function renderAttendanceDialog(lessonId) {
         <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
       </div>
       <div class="attendance-quickbar">
-        <label>点名场景模板<select name="attendanceScenario">${attendanceScenarioOptions("normal")}</select></label>
+        <label>点名场景模板<select name="attendanceScenario">${attendanceScenarioOptions(scenario)}</select></label>
         <div class="attendance-actions">
           <button class="small-button" type="button" data-attendance-bulk="到课">全部到课</button>
           <button class="small-button" type="button" data-attendance-bulk="迟到">全部迟到</button>
@@ -424,6 +432,7 @@ function renderAttendanceDialog(lessonId) {
       </div>
     </form>`;
   attendanceDialog.showModal();
+  if (preferredScenario) applyAttendanceScenario(attendanceDialogBody.querySelector("#attendanceForm"), scenario);
 }
 
 function saveAttendance(form) {
@@ -489,7 +498,7 @@ function flattenAttendanceRows() {
 
 document.addEventListener("click", (event) => {
   const attendanceButton = event.target.closest("[data-attendance-lesson]");
-  if (attendanceButton) renderAttendanceDialog(attendanceButton.dataset.attendanceLesson);
+  if (attendanceButton) renderAttendanceDialog(attendanceButton.dataset.attendanceLesson, attendanceButton.dataset.attendanceScenario || "");
 
   const bulkButton = event.target.closest("[data-attendance-bulk]");
   if (bulkButton) {
@@ -511,7 +520,7 @@ document.addEventListener(
     if (!lesson || lesson.status === "已上课") return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    renderConsumeConfirmDialog(lesson.id);
+    renderConsumeConfirmDialog(lesson.id, finishButton.dataset.consumeScenario || "attendance");
   },
   true
 );

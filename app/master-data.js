@@ -193,7 +193,7 @@ renderView = function renderViewWithMasters() {
 const baseRenderLessonForm = renderLessonForm;
 renderLessonForm = function renderLessonFormWithMasterData() {
   if (!appState.courses?.length || !appState.teachers?.length || !appState.rooms?.length) return baseRenderLessonForm();
-  const defaultClass = appState.classes[0] || {};
+  const defaultClass = getClass(selectedClassForLesson) || appState.classes[0] || {};
   const defaultDate = typeof lessonDatePresetValue === "function" ? lessonDatePresetValue("nextMonday") : "2026-09-07";
   const recommendation = typeof lessonTargetRecommendation === "function" ? lessonTargetRecommendation(defaultClass) : {
     subject: defaultClass.course || "数学",

@@ -352,8 +352,10 @@ document.addEventListener("click", (event) => {
   const scheduleButton = event.target.closest("[data-enrollment-schedule]");
   if (scheduleButton) {
     const className = scheduleButton.dataset.enrollmentSchedule;
-    setNotice("schedule", `${className} 需要新增未来课节，可在新增课节表单中选择该班级。`, "amber");
+    selectedClassForLesson = className;
+    setNotice("schedule", `${className} 已带入新增排课表单，可直接核对日期和时间后保存。`, "amber");
     setView("schedule");
+    setTimeout(() => document.querySelector('[data-clean-panel-open="lessonForm"]')?.click(), 30);
   }
 });
 

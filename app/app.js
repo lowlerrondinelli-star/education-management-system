@@ -28,6 +28,7 @@ let selectedWorkbookIndex = 0;
 let selectedSheetIndex = 0;
 let selectedStudentForOrder = "";
 let selectedStudentForClass = "";
+let selectedClassForLesson = "";
 let operationNotice = null;
 
 const appContent = document.querySelector("#appContent");
@@ -1472,7 +1473,7 @@ function renderClasses() {
 }
 
 function renderLessonForm() {
-  const defaultClass = appState.classes[0] || {};
+  const defaultClass = getClass(selectedClassForLesson) || appState.classes[0] || {};
   const defaultDate = typeof lessonDatePresetValue === "function" ? lessonDatePresetValue("nextMonday") : "2026-09-07";
   return `
     <form class="operation-panel" id="lessonForm">

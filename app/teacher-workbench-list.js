@@ -189,7 +189,8 @@ function renderTeacherTaskToolbar() {
 }
 
 function teacherTaskReasonTags(lesson) {
-  return `<div class="teacher-task-tags">${teacherTaskReasonItems(lesson).map((item) => tag(item.label, item.tone)).join("")}</div>`;
+  const closureTags = typeof lessonClosureStatus === "function" && typeof lessonClosureStepTags === "function" ? lessonClosureStepTags(lessonClosureStatus(lesson)) : "";
+  return `<div class="teacher-task-tags">${closureTags || teacherTaskReasonItems(lesson).map((item) => tag(item.label, item.tone)).join("")}</div>`;
 }
 
 function teacherTaskStudentCount(lesson) {
@@ -205,6 +206,10 @@ function renderTeacherTaskRows(lessons) {
     const attendanceText = teacherTaskAttendanceText(lesson);
     const feedbackText = teacherTaskFeedbackText(lesson);
     const studentCount = teacherTaskStudentCount(lesson);
+    const primaryAction =
+      done && !canceled
+        ? `<button class="small-button" type="button" data-teacher-closure="${escapeHtml(lesson.id)}">闭环</button>`
+        : `<button class="small-button" type="button" data-finish-lesson="${escapeHtml(lesson.id)}" ${canceled ? "disabled" : ""}>确认上课</button>`;
     return `<tr>
       <td><strong>${escapeHtml(lesson.date)}</strong><br><span class="muted">${escapeHtml(dayFromDate(lesson.date))} ${escapeHtml(lesson.time)}</span></td>
       <td>${escapeHtml(lesson.target)}<br><span class="muted">${escapeHtml(lesson.type || "班级课")}${studentCount ? ` · ${escapeHtml(studentCount)}` : ""}</span></td>
@@ -216,6 +221,7 @@ function renderTeacherTaskRows(lessons) {
       <td>
         <div class="teacher-task-actions">
           <button class="small-button" type="button" data-attendance-lesson="${escapeHtml(lesson.id)}" ${canceled ? "disabled" : ""}>点名</button>
+          ${primaryAction}
           <button class="small-button" type="button" data-feedback-lesson="${escapeHtml(lesson.id)}" ${canceled ? "disabled" : ""}>反馈</button>
           <button class="small-button" type="button" data-schedule-adjust="reschedule" data-lesson-id="${escapeHtml(lesson.id)}" ${done || canceled ? "disabled" : ""}>调课</button>
         </div>

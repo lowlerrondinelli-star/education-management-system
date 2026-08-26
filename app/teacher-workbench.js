@@ -215,6 +215,11 @@ function teacherDeskLessonCard(lesson, mode = "normal") {
   const attendanceText = typeof attendanceSummary === "function" ? attendanceSummary(lesson) : lessonHasAttendance(lesson) ? "已点名" : "未点名";
   const feedbackText = lesson.status === "已上课" ? (lessonHasSentFeedback(lesson) ? "已反馈" : "待反馈") : "课后反馈";
   const warn = mode === "attendance" || mode === "feedback";
+  const closureTags = typeof lessonClosureStatus === "function" && typeof lessonClosureStepTags === "function" ? lessonClosureStepTags(lessonClosureStatus(lesson)) : "";
+  const mainAction =
+    lesson.status === "已上课"
+      ? `<button class="small-button" type="button" data-teacher-closure="${escapeHtml(lesson.id)}">闭环</button>`
+      : `<button class="small-button" type="button" data-finish-lesson="${escapeHtml(lesson.id)}">确认上课</button>`;
   return `<article class="teacher-lesson-card ${warn ? "warn" : ""}">
     <div>
       <strong>${escapeHtml(lesson.target)}</strong>
@@ -225,11 +230,13 @@ function teacherDeskLessonCard(lesson, mode = "normal") {
       ${tag(attendanceText, attendanceText === "未点名" ? "amber" : "green")}
       ${tag(feedbackText, feedbackText === "待反馈" ? "red" : feedbackText === "已反馈" ? "green" : "")}
     </div>
+    ${closureTags ? `<div class="teacher-action-row">${closureTags}</div>` : ""}
     <span class="muted">${escapeHtml(lesson.subject)} / ${escapeHtml(lesson.teacher)} / ${escapeHtml(lesson.room)}</span>
     <div class="teacher-action-row">
-      <button class="small-button" type="button" data-go="schedule">看课表</button>
       <button class="small-button" type="button" data-attendance-lesson="${escapeHtml(lesson.id)}">点名</button>
+      ${mainAction}
       <button class="small-button" type="button" data-feedback-lesson="${escapeHtml(lesson.id)}">反馈</button>
+      <button class="small-button" type="button" data-go="consume">流水</button>
     </div>
   </article>`;
 }
@@ -358,6 +365,12 @@ document.addEventListener("change", (event) => {
     teacherDeskScopeMode = "teacher";
     renderView();
   }
+});
+
+document.addEventListener("click", (event) => {
+  const closureButton = event.target.closest("[data-teacher-closure]");
+  if (!closureButton || typeof renderLessonClosureDialog !== "function") return;
+  renderLessonClosureDialog(closureButton.dataset.teacherClosure);
 });
 
 renderNav();

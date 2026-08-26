@@ -109,8 +109,8 @@ renderOrderQuickForm = function renderOrderQuickFormWithPaymentFields() {
       </div>
       <div class="operation-grid">
         <label>学员<select name="studentId" required>${studentOptions(selectedStudentForOrder)}</select></label>
-        <label>报读班级<select name="className" required>${classOptions(defaultClass.name)}</select></label>
-        <label>报读课程<input name="course" value="${escapeHtml(defaultClass.course || "常规课程")}" required /></label>
+        <label>报读班级<select name="className" id="orderClassSelect" required>${classOptions(defaultClass.name)}</select></label>
+        <label>报读课程<select name="course" id="orderCourseSelect" required>${courseOptions(defaultClass.course || selectedStudent?.course || "常规课程")}</select></label>
         <label>购买课时<input name="bought" type="number" min="0" step="0.5" value="20" required /></label>
         <label>赠送课时<input name="gift" type="number" min="0" step="0.5" value="0" /></label>
         <label>实收金额<input name="paid" type="number" min="0" step="1" value="2800" required /></label>

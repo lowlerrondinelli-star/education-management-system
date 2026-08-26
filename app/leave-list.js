@@ -232,7 +232,7 @@ renderLeaveManagement = function renderLeaveManagementWithFilters() {
         </div>
       </div>
     </section>
-    <section class="section">
+    <section class="section leave-detail-panel">
       <div class="section-head"><h3>请假明细</h3><span class="muted">可在数据中心导出 CSV 对账</span></div>
       <div class="section-body">
         ${table(["学员", "原课节日期", "班级/对象", "类型", "状态", "补课建议", "补课课节", "待处理", "处理人", "操作"], renderLeaveRows(visibleRows))}

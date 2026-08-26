@@ -44,6 +44,10 @@ const cleanUiSupportPanelMeta = {
     { key: "roster", selector: ".teacher-roster-panel", label: "班级花名册", hint: "查看老师班级和学员风险" },
     { key: "execution", selector: ".lesson-execution-panel", label: "上课闭环", hint: "查看点名消课反馈进度" },
     { key: "tasks", selector: ".teacher-task-panel", label: "任务清单", hint: "查看待点名反馈和异常" }
+  ],
+  leaves: [
+    { key: "detail", selector: ".leave-detail-panel", label: "请假明细", hint: "查看全部请假补课记录" },
+    { key: "audit", selector: ".attendance-audit-panel", label: "考勤核对", hint: "查看异常考勤和补课闭环" }
   ]
 };
 
@@ -52,7 +56,8 @@ const cleanUiSupportGroupMeta = {
   students: { title: "学员辅助" },
   classes: { title: "班级辅助" },
   orders: { title: "订单辅助" },
-  teacherDesk: { title: "老师辅助" }
+  teacherDesk: { title: "老师辅助" },
+  leaves: { title: "请假辅助" }
 };
 
 function cleanUiViewKey() {
@@ -101,7 +106,8 @@ function cleanUiPanelsInBody(body) {
     ...body.querySelectorAll(":scope > .master-grid > form.master-card"),
     ...body.querySelectorAll(":scope > .lead-layout > form.master-card"),
     ...body.querySelectorAll(":scope > .follow-layout > form.master-card"),
-    ...body.querySelectorAll(":scope > .staff-layout > form.master-card")
+    ...body.querySelectorAll(":scope > .staff-layout > form.master-card"),
+    ...body.querySelectorAll(":scope > .leave-board form.operation-panel")
   ];
   return [...new Set([...directPanels, ...nestedPanels])];
 }
@@ -110,7 +116,7 @@ function cleanUiDockAnchor(body, panels) {
   const firstPanel = panels[0];
   if (!firstPanel) return null;
   if (firstPanel.parentElement === body) return firstPanel;
-  return firstPanel.closest(".master-grid, .lead-layout, .follow-layout, .staff-layout") || firstPanel;
+  return firstPanel.closest(".master-grid, .lead-layout, .follow-layout, .staff-layout, .leave-board") || firstPanel;
 }
 
 function cleanUiActionDock(panels) {

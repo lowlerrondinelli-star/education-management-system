@@ -92,6 +92,16 @@ function weekdayCheckboxes() {
     .join("");
 }
 
+function batchSubjectValue(classItem = {}) {
+  const source = [classItem.name, classItem.course, classItem.subject].map(text).join(" ");
+  if (source.includes("语文")) return "语文";
+  if (source.includes("英语")) return "英语";
+  if (source.includes("物理")) return "物理";
+  if (source.includes("化学")) return "化学";
+  if (source.includes("数学")) return "数学";
+  return text(classItem.course).trim() || "课程";
+}
+
 function flattenScheduleBatchRows() {
   ensureScheduleBatchData();
   return appState.scheduleBatches.map((item) => ({
@@ -177,9 +187,9 @@ function renderBatchSchedulePanel() {
         <label>课节类型<select name="type"><option>班级课</option><option>1对1</option></select></label>
         <label>开始时间<input name="startTime" type="time" value="18:30" required /></label>
         <label>结束时间<input name="endTime" type="time" value="20:00" required /></label>
-        <label>上课教师<input name="teacher" value="${escapeHtml(defaultClass.teacher || "任课老师")}" required /></label>
-        <label>上课教室<input name="room" value="${escapeHtml(defaultClass.room || "默认教室")}" required /></label>
-        <label>科目<input name="subject" value="${escapeHtml(defaultClass.course || "课程")}" required /></label>
+        <label>上课教师<select name="teacher" required>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(defaultClass.teacher || "任课老师") : `<option>${escapeHtml(defaultClass.teacher || "任课老师")}</option>`}</select></label>
+        <label>上课教室<select name="room" required>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(defaultClass.room || "默认教室") : `<option>${escapeHtml(defaultClass.room || "默认教室")}</option>`}</select></label>
+        <label>科目<select name="subject" required>${typeof subjectChoiceOptions === "function" ? subjectChoiceOptions(batchSubjectValue(defaultClass)) : `<option>${escapeHtml(batchSubjectValue(defaultClass))}</option>`}</select></label>
       </div>
       <div class="weekday-picker" aria-label="选择星期">${weekdayCheckboxes()}</div>
       <div class="dialog-actions">
@@ -264,9 +274,12 @@ document.addEventListener("change", (event) => {
     const form = event.target.closest("#batchScheduleForm");
     const classItem = getClass(event.target.value);
     if (!form || !classItem) return;
-    form.elements.teacher.value = classItem.teacher || form.elements.teacher.value;
-    form.elements.room.value = classItem.room || form.elements.room.value;
-    form.elements.subject.value = classItem.course || form.elements.subject.value;
+    if (typeof teacherChoiceOptions === "function") form.elements.teacher.innerHTML = teacherChoiceOptions(classItem.teacher || form.elements.teacher.value);
+    else form.elements.teacher.value = classItem.teacher || form.elements.teacher.value;
+    if (typeof roomChoiceOptions === "function") form.elements.room.innerHTML = roomChoiceOptions(classItem.room || form.elements.room.value);
+    else form.elements.room.value = classItem.room || form.elements.room.value;
+    if (typeof subjectChoiceOptions === "function") form.elements.subject.innerHTML = subjectChoiceOptions(batchSubjectValue(classItem));
+    else form.elements.subject.value = batchSubjectValue(classItem);
   }
 });
 

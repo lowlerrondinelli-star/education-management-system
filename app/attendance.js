@@ -37,6 +37,26 @@ attendanceStyle.textContent = `
     flex-wrap: wrap;
   }
 
+  .attendance-quickbar {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fbfdff;
+    padding: 10px;
+    margin-top: 14px;
+    display: grid;
+    gap: 10px;
+  }
+
+  .attendance-quickbar .attendance-actions {
+    align-items: center;
+  }
+
+  .attendance-draft-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
   @media (max-width: 1050px) {
     .attendance-row {
       grid-template-columns: 1fr;
@@ -106,6 +126,30 @@ function attendanceStatusOptions(value) {
   return attendanceStatuses.map((status) => `<option value="${status}" ${status === value ? "selected" : ""}>${status}</option>`).join("");
 }
 
+function attendanceDraftCounts(form) {
+  const counts = Object.fromEntries(attendanceStatuses.map((status) => [status, 0]));
+  form.querySelectorAll('select[name^="status:"]').forEach((select) => {
+    counts[select.value] = Number(counts[select.value] || 0) + 1;
+  });
+  return counts;
+}
+
+function renderAttendanceDraftSummary(counts) {
+  return `<div class="attendance-draft-summary">
+    ${attendanceStatuses
+      .map((status) => {
+        const tone = status === "到课" || status === "迟到" ? "green" : status === "请假" ? "amber" : "red";
+        return tag(`${status} ${counts[status] || 0}`, tone);
+      })
+      .join("")}
+  </div>`;
+}
+
+function updateAttendanceDraftSummary(form) {
+  const target = form.querySelector("[data-attendance-draft-summary]");
+  if (target) target.innerHTML = renderAttendanceDraftSummary(attendanceDraftCounts(form));
+}
+
 const baseRenderScheduleForAttendance = renderSchedule;
 renderSchedule = function renderScheduleWithAttendance() {
   const days = ["周一", "周二", "周三", "周四", "周五"];
@@ -151,6 +195,13 @@ function renderAttendanceDialog(lessonId) {
   const lesson = appState.lessons.find((item) => item.id === lessonId);
   if (!lesson) return;
   const record = attendanceForLesson(lesson);
+  const studentsById = new Map(appState.students.map((student) => [student.id, student]));
+  const initialCounts = {
+    到课: record.records.filter((item) => item.status === "到课").length,
+    迟到: record.records.filter((item) => item.status === "迟到").length,
+    请假: record.records.filter((item) => item.status === "请假").length,
+    旷课: record.records.filter((item) => item.status === "旷课").length
+  };
   attendanceDialogBody.innerHTML = `
     <form method="dialog" id="attendanceForm" data-lesson-id="${escapeHtml(lesson.id)}">
       <div class="dialog-head">
@@ -161,16 +212,27 @@ function renderAttendanceDialog(lessonId) {
         </div>
         <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
       </div>
+      <div class="attendance-quickbar">
+        <div class="attendance-actions">
+          <button class="small-button" type="button" data-attendance-bulk="到课">全部到课</button>
+          <button class="small-button" type="button" data-attendance-bulk="迟到">全部迟到</button>
+          <button class="small-button" type="button" data-attendance-bulk="请假">全部请假</button>
+          <button class="small-button" type="button" data-attendance-bulk="旷课">全部旷课</button>
+        </div>
+        <div data-attendance-draft-summary>${renderAttendanceDraftSummary(initialCounts)}</div>
+      </div>
       <div class="attendance-list">
         ${
           record.records
-            .map(
-              (item) => `<label class="attendance-row">
+            .map((item) => {
+              const student = studentsById.get(item.studentId);
+              const debt = Number(student?.debt || 0);
+              return `<label class="attendance-row">
                 <strong>${escapeHtml(item.student)}</strong>
-                <span class="muted">余额 ${escapeHtml(item.balance)} 课时</span>
+                <span class="muted">余额 ${escapeHtml(item.balance)} 课时${debt > 0 ? ` · 欠费 ${escapeHtml(money(debt))}` : ""}</span>
                 <select name="status:${escapeHtml(item.studentId)}">${attendanceStatusOptions(item.status)}</select>
-              </label>`
-            )
+              </label>`;
+            })
             .join("") || `<div class="stack-item"><span class="muted">当前课节没有匹配学员。</span></div>`
         }
       </div>
@@ -246,6 +308,22 @@ function flattenAttendanceRows() {
 document.addEventListener("click", (event) => {
   const attendanceButton = event.target.closest("[data-attendance-lesson]");
   if (attendanceButton) renderAttendanceDialog(attendanceButton.dataset.attendanceLesson);
+
+  const bulkButton = event.target.closest("[data-attendance-bulk]");
+  if (bulkButton) {
+    const form = bulkButton.closest("#attendanceForm");
+    if (!form) return;
+    form.querySelectorAll('select[name^="status:"]').forEach((select) => {
+      select.value = bulkButton.dataset.attendanceBulk;
+    });
+    updateAttendanceDraftSummary(form);
+  }
+});
+
+document.addEventListener("change", (event) => {
+  if (!event.target.matches('select[name^="status:"]')) return;
+  const form = event.target.closest("#attendanceForm");
+  if (form) updateAttendanceDraftSummary(form);
 });
 
 document.addEventListener("submit", (event) => {

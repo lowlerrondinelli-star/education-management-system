@@ -29,6 +29,11 @@ paymentStyle.textContent = `
     flex-wrap: wrap;
   }
 
+  .order-package-hint {
+    grid-column: 1 / -1;
+    line-height: 1.55;
+  }
+
   @media (max-width: 900px) {
     .payment-summary {
       grid-template-columns: 1fr;
@@ -98,27 +103,137 @@ function renderPaymentSummary() {
     </div>`;
 }
 
+function addMonthsToToday(months) {
+  const date = new Date(`${todayIsoDate()}T00:00:00`);
+  date.setMonth(date.getMonth() + months);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function orderCourseMeta(courseName) {
+  const course = (appState.courses || []).find((item) => item.name === courseName) || {};
+  return {
+    name: courseName || course.name || "常规课程",
+    hours: Number(course.hours || 20),
+    price: Number(course.price || 2800)
+  };
+}
+
+function orderPackagePresets(courseName) {
+  const course = orderCourseMeta(courseName);
+  const standardPrice = course.price || 2800;
+  const standardHours = course.hours || 20;
+  const deposit = Math.min(1000, Math.max(500, Math.round(standardPrice * 0.25)));
+  return [
+    {
+      key: "standard",
+      label: `标准报名：${standardHours} 课时`,
+      bought: standardHours,
+      gift: standardPrice >= 3000 ? 2 : 0,
+      paid: standardPrice,
+      debt: 0,
+      months: 6,
+      note: "按课程标准价一次收齐，适合常规报名。"
+    },
+    {
+      key: "deposit",
+      label: `定金锁班：先收 ${money(deposit)}`,
+      bought: standardHours,
+      gift: 0,
+      paid: deposit,
+      debt: Math.max(0, standardPrice - deposit),
+      months: 3,
+      note: "先收定金保留名额，剩余金额进入欠费补缴。"
+    },
+    {
+      key: "short",
+      label: "短期体验包：4 课时",
+      bought: 4,
+      gift: 0,
+      paid: Math.max(398, Math.round(standardPrice / Math.max(standardHours, 1) * 4)),
+      debt: 0,
+      months: 1,
+      note: "适合试听转化或短期体验，后续可再续正式课包。"
+    },
+    {
+      key: "renewal",
+      label: `续费课包：${standardHours} + 2 课时`,
+      bought: standardHours,
+      gift: 2,
+      paid: standardPrice,
+      debt: 0,
+      months: 6,
+      note: "适合在读学员续费，默认赠送 2 课时。"
+    }
+  ];
+}
+
+function selectedOrderPackage(courseName, key = "standard") {
+  return orderPackagePresets(courseName).find((item) => item.key === key) || orderPackagePresets(courseName)[0];
+}
+
+function orderPackageOptions(courseName, selectedKey = "standard") {
+  return orderPackagePresets(courseName)
+    .map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === selectedKey ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function applyOrderPackagePreset() {
+  const form = document.querySelector("#orderForm");
+  if (!form) return;
+  const courseName = form.querySelector("#orderCourseSelect")?.value || "";
+  const preset = selectedOrderPackage(courseName, form.querySelector("#orderPackageSelect")?.value);
+  const fields = {
+    bought: preset.bought,
+    gift: preset.gift,
+    paid: preset.paid,
+    debt: preset.debt,
+    expireAt: addMonthsToToday(preset.months)
+  };
+  Object.entries(fields).forEach(([name, value]) => {
+    const field = form.elements[name];
+    if (field) field.value = value;
+  });
+  const hint = form.querySelector("[data-order-package-hint]");
+  if (hint) hint.textContent = `${preset.note} 有效期至 ${fields.expireAt}，老师仍可按实际收款微调。`;
+}
+
+function refreshOrderPackageChoices() {
+  const form = document.querySelector("#orderForm");
+  if (!form) return;
+  const select = form.querySelector("#orderPackageSelect");
+  const courseName = form.querySelector("#orderCourseSelect")?.value || "";
+  if (select) select.innerHTML = orderPackageOptions(courseName, select.value || "standard");
+  applyOrderPackagePreset();
+}
+
 renderOrderQuickForm = function renderOrderQuickFormWithPaymentFields() {
   const selectedStudent = appState.students.find((item) => item.id === selectedStudentForOrder);
   const defaultClass = getClass(selectedStudent?.className) || appState.classes[0] || {};
+  const defaultCourse = defaultClass.course || selectedStudent?.course || "常规课程";
+  const defaultPackage = selectedOrderPackage(defaultCourse);
   return `
     <form class="operation-panel" id="orderForm">
       <div>
         <strong>快速报名</strong>
-        <span class="muted">生成订单后同步更新学员状态、班级、课时余额和收款流水。</span>
+        <span class="muted">选择报名套餐后自动填充课时、金额、欠费和有效期，仍可按实际收款微调。</span>
       </div>
       <div class="operation-grid">
         <label>学员<select name="studentId" required>${studentOptions(selectedStudentForOrder)}</select></label>
         <label>报读班级<select name="className" id="orderClassSelect" required>${classOptions(defaultClass.name)}</select></label>
-        <label>报读课程<select name="course" id="orderCourseSelect" required>${courseOptions(defaultClass.course || selectedStudent?.course || "常规课程")}</select></label>
-        <label>购买课时<input name="bought" type="number" min="0" step="0.5" value="20" required /></label>
-        <label>赠送课时<input name="gift" type="number" min="0" step="0.5" value="0" /></label>
-        <label>实收金额<input name="paid" type="number" min="0" step="1" value="2800" required /></label>
-        <label>欠费金额<input name="debt" type="number" min="0" step="1" value="0" /></label>
-        <label>有效期至<input name="expireAt" type="date" value="2027-02-28" required /></label>
+        <label>报读课程<select name="course" id="orderCourseSelect" required>${courseOptions(defaultCourse)}</select></label>
+        <label>报名套餐<select name="package" id="orderPackageSelect">${orderPackageOptions(defaultCourse)}</select></label>
+        <label>购买课时<input name="bought" type="number" min="0" step="0.5" value="${escapeHtml(defaultPackage.bought)}" required /></label>
+        <label>赠送课时<input name="gift" type="number" min="0" step="0.5" value="${escapeHtml(defaultPackage.gift)}" /></label>
+        <label>实收金额<input name="paid" type="number" min="0" step="1" value="${escapeHtml(defaultPackage.paid)}" required /></label>
+        <label>欠费金额<input name="debt" type="number" min="0" step="1" value="${escapeHtml(defaultPackage.debt)}" /></label>
+        <label>有效期至<input name="expireAt" type="date" value="${escapeHtml(addMonthsToToday(defaultPackage.months))}" required /></label>
         <label>收款方式<select name="payMethod"><option>微信</option><option>支付宝</option><option>银行转账</option><option>现金</option><option>线下收款</option></select></label>
         <label>收款账户<select name="account">${typeof paymentAccountOptions === "function" ? paymentAccountOptions("校区收款账户") : "<option>校区收款账户</option>"}</select></label>
         <label>支付单号<input name="tradeNo" placeholder="可选" /></label>
+        <div class="muted order-package-hint" data-order-package-hint>${escapeHtml(`${defaultPackage.note} 有效期至 ${addMonthsToToday(defaultPackage.months)}，老师仍可按实际收款微调。`)}</div>
       </div>
       <div class="dialog-actions">
         <span class="muted">有欠费时后续可在订单列表继续补缴。</span>
@@ -317,6 +432,16 @@ function flattenPaymentRows() {
 document.addEventListener("click", (event) => {
   const payButton = event.target.closest("[data-pay-order]");
   if (payButton && !payButton.disabled) renderPaymentDialog(payButton.dataset.payOrder);
+});
+
+document.addEventListener("change", (event) => {
+  if (event.target.id === "orderPackageSelect") {
+    applyOrderPackagePreset();
+  }
+
+  if (event.target.id === "orderCourseSelect" || event.target.id === "orderClassSelect") {
+    refreshOrderPackageChoices();
+  }
 });
 
 document.addEventListener("submit", (event) => {

@@ -8,6 +8,9 @@ financeAdjustmentStyle.textContent = `
   .finance-adjust-list{border:1px solid var(--line);border-radius:8px;background:#fff;padding:14px;display:grid;gap:10px}
   .finance-adjust-row{border:1px solid var(--line);border-radius:8px;background:#f8fafc;padding:10px;display:grid;gap:5px}
   .finance-adjust-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .finance-adjust-preview{grid-column:1/-1;border:1px solid var(--line);border-radius:8px;background:#f8fafc;padding:10px;display:grid;gap:4px;line-height:1.55}
+  .finance-adjust-preview strong{font-size:14px}
+  #financeAdjustForm input[readonly]{background:#f8fafc;color:var(--muted)}
 `;
 document.head.appendChild(financeAdjustmentStyle);
 
@@ -125,6 +128,58 @@ function financeAdjustmentPlanOptions(kind, order, selectedValue) {
     .join("");
 }
 
+function financeValueModeOptions(selectedValue = "auto") {
+  const options = [
+    ["auto", "按模板自动填写"],
+    ["manual", "手动微调数值"]
+  ];
+  return options.map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(label)}</option>`).join("");
+}
+
+function financeAdjustmentPreviewText(kind, order, plan) {
+  const beforePaid = Number(order.paid || 0);
+  const beforeDebt = Number(order.debt || 0);
+  const beforeHours = orderRemainingHours(order);
+  const amount = Number(plan?.amount || 0);
+  const hours = Number(plan?.hours || 0);
+  if (kind === "refund") {
+    return {
+      title: "退费影响预览",
+      detail: `实收 ${money(beforePaid)} -> ${money(Math.max(0, beforePaid - amount))}；剩余课时 ${beforeHours} -> ${Math.max(0, beforeHours - Math.max(0, hours))}；欠费保持 ${money(beforeDebt)}。`
+    };
+  }
+  if (kind === "hours") {
+    return {
+      title: "课时调整预览",
+      detail: `实收保持 ${money(beforePaid)}；剩余课时 ${beforeHours} -> ${Math.max(0, beforeHours + hours)}；本次只记录课时流水。`
+    };
+  }
+  return {
+    title: "作废影响预览",
+    detail: `实收 ${money(beforePaid)} -> ${money(0)}；欠费 ${money(beforeDebt)} -> ${money(0)}；剩余课时 ${beforeHours} -> 0。`
+  };
+}
+
+function syncFinanceAdjustmentPreview(form, order) {
+  if (!form || !order) return;
+  const plan = {
+    amount: Number(form.elements.amount?.value || 0),
+    hours: Number(form.elements.hours?.value || 0)
+  };
+  const preview = financeAdjustmentPreviewText(form.dataset.kind, order, plan);
+  const target = form.querySelector("[data-finance-adjust-preview]");
+  if (target) {
+    target.innerHTML = `<strong>${escapeHtml(preview.title)}</strong><span class="muted">${escapeHtml(preview.detail)}</span>`;
+  }
+}
+
+function applyFinanceAdjustmentValueMode(form) {
+  if (!form) return;
+  const auto = (form.elements.valueMode?.value || "auto") === "auto";
+  if (form.elements.amount) form.elements.amount.readOnly = auto;
+  if (form.elements.hours) form.elements.hours.readOnly = auto;
+}
+
 function applyFinanceAdjustmentPlan(form, order) {
   if (!form || !order) return;
   const plan = financeAdjustmentPlanPresets(form.dataset.kind, order)[form.elements.adjustPlan?.value];
@@ -137,6 +192,8 @@ function applyFinanceAdjustmentPlan(form, order) {
   if (form.elements.reason) {
     form.elements.reason.innerHTML = typeof financeReasonOptions === "function" ? financeReasonOptions(form.dataset.kind, plan.reason) : `<option>${escapeHtml(plan.reason)}</option>`;
   }
+  applyFinanceAdjustmentValueMode(form);
+  syncFinanceAdjustmentPreview(form, order);
 }
 
 function injectFinanceOrderControls() {
@@ -199,10 +256,15 @@ function renderFinanceAdjustDialog(kind, orderId) {
       </div>
       <div class="form-grid">
         <label>处理模板<select name="adjustPlan">${financeAdjustmentPlanOptions(kind, order, defaultPlanKey)}</select></label>
-        <label>金额<input name="amount" type="number" min="0" max="${isRefund || isVoid ? paid : 999999}" step="1" value="${escapeHtml(defaultPlan.amount)}" ${isHours ? "" : "required"} /></label>
-        <label>课时变动<input name="hours" type="number" min="${isHours ? -remaining : 0}" max="${isRefund || isVoid ? remaining : 999}" step="0.5" value="${escapeHtml(defaultPlan.hours)}" required /></label>
+        <label>数值来源<select name="valueMode">${financeValueModeOptions("auto")}</select></label>
+        <label>金额<input name="amount" type="number" min="0" max="${isRefund || isVoid ? paid : 999999}" step="1" value="${escapeHtml(defaultPlan.amount)}" ${isHours ? "" : "required"} readonly /></label>
+        <label>课时变动<input name="hours" type="number" min="${isHours ? -remaining : 0}" max="${isRefund || isVoid ? remaining : 999}" step="0.5" value="${escapeHtml(defaultPlan.hours)}" required readonly /></label>
         <label>经办人<select name="operator" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions(order.owner || "前台老师") : `<option>${escapeHtml(order.owner || "前台老师")}</option>`}</select></label>
         <label>处理方式<select name="method">${typeof paymentMethodOptions === "function" ? paymentMethodOptions(defaultPlan.method) : `<option>${escapeHtml(defaultPlan.method)}</option>`}</select></label>
+        <div class="finance-adjust-preview" data-finance-adjust-preview>
+          <strong>${escapeHtml(financeAdjustmentPreviewText(kind, order, defaultPlan).title)}</strong>
+          <span class="muted">${escapeHtml(financeAdjustmentPreviewText(kind, order, defaultPlan).detail)}</span>
+        </div>
       </div>
       <div class="form-grid" style="grid-template-columns:1fr;">
         <label>原因备注<select name="reason" required>${typeof financeReasonOptions === "function" ? financeReasonOptions(kind, defaultPlan.reason) : `<option>${escapeHtml(defaultPlan.reason)}</option>`}</select></label>
@@ -484,9 +546,24 @@ document.addEventListener("submit", (event) => {
 });
 
 document.addEventListener("change", (event) => {
-  if (event.target.name !== "adjustPlan" || !event.target.closest("#financeAdjustForm")) return;
+  if (!event.target.closest("#financeAdjustForm")) return;
   const form = event.target.form;
-  applyFinanceAdjustmentPlan(form, orderById(form.dataset.orderId));
+  const order = orderById(form.dataset.orderId);
+  if (event.target.name === "adjustPlan") {
+    applyFinanceAdjustmentPlan(form, order);
+  }
+  if (event.target.name === "valueMode") {
+    applyFinanceAdjustmentValueMode(form);
+  }
+  if (["amount", "hours"].includes(event.target.name)) {
+    syncFinanceAdjustmentPreview(form, order);
+  }
+});
+
+document.addEventListener("input", (event) => {
+  if (!event.target.closest("#financeAdjustForm") || !["amount", "hours"].includes(event.target.name)) return;
+  const form = event.target.form;
+  syncFinanceAdjustmentPreview(form, orderById(form.dataset.orderId));
 });
 
 ensureFinanceAdjustmentData();

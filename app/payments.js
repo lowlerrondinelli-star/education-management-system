@@ -207,10 +207,10 @@ function renderPaymentDialog(orderId) {
       <div class="form-grid">
         <label>本次收款<input name="amount" type="number" min="1" max="${debt}" step="1" value="${debt}" required /></label>
         <label>收款方式<select name="method"><option>微信</option><option>支付宝</option><option>银行转账</option><option>现金</option><option>线下收款</option></select></label>
-        <label>收款账户<input name="account" value="${escapeHtml(order.account || "校区收款账户")}" /></label>
+        <label>收款账户<select name="account">${typeof paymentAccountOptions === "function" ? paymentAccountOptions(order.account || "校区收款账户") : `<option>${escapeHtml(order.account || "校区收款账户")}</option>`}</select></label>
         <label>支付单号<input name="tradeNo" value="${escapeHtml(order.tradeNo || "")}" /></label>
-        <label>经办人<input name="operator" value="${escapeHtml(order.owner || "前台老师")}" /></label>
-        <label>备注<input name="note" value="欠费补缴" /></label>
+        <label>经办人<select name="operator">${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions(order.owner || "前台老师") : `<option>${escapeHtml(order.owner || "前台老师")}</option>`}</select></label>
+        <label>备注<select name="note">${typeof paymentNoteOptions === "function" ? paymentNoteOptions("欠费补缴") : "<option>欠费补缴</option>"}</select></label>
       </div>
       <div class="dialog-actions">
         <span class="muted">保存后会同步减少订单欠费和学员欠费。</span>

@@ -260,6 +260,30 @@ function scheduleReasonOptions(kind = "reschedule", selectedValue = "") {
   );
 }
 
+function followUpNoteOptions(selectedValue = "家长约定周五补缴") {
+  return choiceOptions(
+    [
+      "家长约定周五补缴",
+      "已电话沟通，等待家长确认",
+      "需要安排试听后再确认报名",
+      "课时不足，提醒尽快续费",
+      "欠费未缴，需再次提醒",
+      "高风险反馈，需校区负责人跟进",
+      "家长暂未回复，明天继续联系",
+      "其他情况，线下备注"
+    ],
+    selectedValue
+  );
+}
+
+function paymentAccountOptions(selectedValue = "校区收款账户") {
+  return choiceOptions(["校区收款账户", "对公账户", "微信收款码", "支付宝收款码", "现金账户", "其他账户"], selectedValue);
+}
+
+function paymentNoteOptions(selectedValue = "欠费补缴") {
+  return choiceOptions(["欠费补缴", "家长补齐尾款", "分期补缴", "线下收款已核对", "财务复核后入账", "其他收款备注"], selectedValue);
+}
+
 function subjectChoiceOptions(selectedValue = "数学") {
   return choiceOptions(
     [

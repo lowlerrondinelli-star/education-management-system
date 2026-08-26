@@ -243,12 +243,12 @@ function renderFollowUpForm() {
       <div class="operation-grid compact">
         <label>学员<select name="studentId" required>${studentOptions(appState.students[0]?.id || "")}</select></label>
         <label>跟进类型<select name="type">${followUpTypes.map((item) => `<option>${escapeHtml(item)}</option>`).join("")}</select></label>
-        <label>跟进人<input name="owner" value="前台老师" required /></label>
+        <label>跟进人<select name="owner" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions("前台老师") : "<option>前台老师</option>"}</select></label>
         <label>下次跟进<input name="dueDate" type="date" value="${daysFromToday(1)}" required /></label>
         <label>跟进结果<select name="result">${followUpResults.map((item) => `<option>${escapeHtml(item)}</option>`).join("")}</select></label>
         <label>优先级<select name="priority"><option>中</option><option>高</option><option>低</option></select></label>
       </div>
-      <label class="stack-item">备注<input name="note" placeholder="例如 家长约定周五补缴，或需要安排试听。" /></label>
+      <label class="stack-item">备注<select name="note">${typeof followUpNoteOptions === "function" ? followUpNoteOptions("家长约定周五补缴") : "<option>家长约定周五补缴</option>"}</select></label>
       <button class="primary-action" type="submit">保存跟进</button>
     </form>`;
 }

@@ -125,6 +125,24 @@ function dailyHandoverLessonDetail(lesson) {
   return `${lesson.subject || "课程"} / ${students.length || 0} 名学员 / ${attendance} / ${lesson.room || "未分教室"}`;
 }
 
+function dailyHandoverStudentByName(name) {
+  return appState.students.find((student) => student.name === name);
+}
+
+function dailyHandoverFollowAction(item, label = "跟进") {
+  const studentId = item.studentId || dailyHandoverStudentByName(item.student)?.id;
+  return studentId
+    ? `<button class="small-button" type="button" data-student-follow="${escapeHtml(studentId)}">${escapeHtml(label)}</button>`
+    : `<button class="small-button" type="button" data-go="followUp">${escapeHtml(label)}</button>`;
+}
+
+function dailyHandoverLeaveAction(leave) {
+  if (leave.status === "待审批") return `<button class="small-button" type="button" data-leave-approve="${escapeHtml(leave.id)}">批准</button>`;
+  if (["待补课", "已批准"].includes(leave.status)) return `<button class="small-button" type="button" data-leave-makeup="${escapeHtml(leave.id)}">安排补课</button>`;
+  if (leave.status === "已安排补课") return `<button class="small-button" type="button" data-leave-complete="${escapeHtml(leave.id)}">完成</button>`;
+  return `<button class="small-button" type="button" data-go="leaves">请假台</button>`;
+}
+
 function dailyHandoverLessonRows(date) {
   return (appState.lessons || [])
     .filter((lesson) => lesson.date === date)
@@ -166,7 +184,7 @@ function dailyHandoverPaymentRows(date) {
       status: Number(payment.amount || 0) < 0 ? "退费" : "已收款",
       detail: `${payment.type || "收款"} / ${payment.method || "线下收款"} / ${payment.orderId || "无订单号"}`,
       note: payment.note || payment.tradeNo || "收款流水已留档。",
-      actions: `<button class="small-button" type="button" data-go="orders">订单</button>`
+      actions: payment.orderId ? `<button class="small-button" type="button" data-go="orders">订单</button>` : ""
     }));
 }
 
@@ -185,7 +203,7 @@ function dailyHandoverLeaveRows(date) {
       status: ["已完成", "已驳回"].includes(leave.status) ? "已闭环" : "请假处理中",
       detail: `${leave.target || "课节"} / ${leave.leaveType || "请假"} / ${leave.makeupPlan || "补课待确认"}`,
       note: leave.status === "已安排补课" ? `补课 ${leave.makeupDate || ""} ${leave.makeupTime || ""}`.trim() : leave.reason || "请假补课需继续跟进。",
-      actions: `<button class="small-button" type="button" data-go="leaves">请假台</button>`
+      actions: [dailyHandoverLeaveAction(leave), `<button class="small-button" type="button" data-go="leaves">请假台</button>`].join("")
     }));
 }
 
@@ -207,7 +225,7 @@ function dailyHandoverFollowRows(date) {
       note: "交接给下一班继续联系家长。",
       actions: [
         `<button class="small-button" type="button" data-follow-result="${escapeHtml(item.id)}" data-result="已联系">已联系</button>`,
-        `<button class="small-button" type="button" data-go="followUp">跟进台</button>`
+        dailyHandoverFollowAction(item, "跟进")
       ].join("")
     }));
 }
@@ -247,7 +265,7 @@ function dailyHandoverOrderRows(date) {
         status: "课时不足",
         detail: `${order.course || "课程"} / 有效期 ${order.expireAt || "未设置"}`,
         note: "交接给学管安排续费提醒。",
-        actions: `<button class="small-button" type="button" data-go="followUp">跟进台</button>`
+        actions: dailyHandoverFollowAction({ student: order.student }, "跟进")
       });
     }
     return rows;

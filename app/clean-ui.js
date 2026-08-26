@@ -67,6 +67,9 @@ const cleanUiSupportPanelMeta = {
   followUp: [
     { key: "records", selector: ".follow-records-panel", label: "跟进记录", hint: "查看续费回访和处理结果" }
   ],
+  consume: [
+    { key: "pending", selector: ".consume-pending-panel", label: "待消课", hint: "点名后确认课时流水" }
+  ],
   data: [
     { key: "import", selector: ".import-panel", label: "CSV 导入", hint: "选择模板和导入文件" },
     { key: "readiness", selector: ".import-readiness-panel", label: "导入准备", hint: "检查依赖资料和校验点" },
@@ -99,6 +102,7 @@ const cleanUiSupportGroupMeta = {
   feedback: { title: "反馈辅助" },
   leads: { title: "招生辅助" },
   followUp: { title: "续费辅助" },
+  consume: { title: "消课辅助" },
   data: { title: "数据辅助" },
   templates: { title: "模板辅助" },
   reports: { title: "报表辅助" }

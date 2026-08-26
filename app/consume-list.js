@@ -40,11 +40,39 @@ consumeListStyle.textContent = `
     max-width: 260px;
   }
 
+  .consume-pending-panel .consume-pending-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .consume-pending-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--soft);
+  }
+
+  .consume-pending-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
   @media (max-width: 650px) {
     .consume-filter-toolbar,
     .consume-filter-toolbar label,
-    .consume-filter-toolbar select {
+    .consume-filter-toolbar select,
+    .consume-pending-card {
       width: 100%;
+    }
+
+    .consume-pending-card {
+      grid-template-columns: 1fr;
     }
   }
 `;
@@ -200,6 +228,80 @@ function renderConsumeRows(rows) {
   });
 }
 
+function consumeLessonHasAttendance(lesson) {
+  if (typeof lessonHasAttendance === "function") return lessonHasAttendance(lesson);
+  const record = appState.attendance?.find((item) => item.lessonId === lesson.id);
+  return Boolean(record?.updatedAt || record?.records?.length);
+}
+
+function consumePendingLessonStatus(lesson) {
+  if (lesson.status === "已取消") return { key: "canceled", label: "已取消", tone: "" };
+  if (lesson.status === "已上课") return { key: "done", label: "已消课", tone: "green" };
+  if (consumeLessonHasAttendance(lesson)) return { key: "ready", label: "可确认消课", tone: "amber" };
+  return { key: "attendance", label: "待点名", tone: "red" };
+}
+
+function consumePendingLessons() {
+  return appState.lessons
+    .filter((lesson) => !["已取消", "已上课"].includes(lesson.status))
+    .slice()
+    .sort((left, right) => `${left.date} ${left.time}`.localeCompare(`${right.date} ${right.time}`));
+}
+
+function consumePendingSummary(rows) {
+  const ready = rows.filter((lesson) => consumePendingLessonStatus(lesson).key === "ready").length;
+  const attendance = rows.filter((lesson) => consumePendingLessonStatus(lesson).key === "attendance").length;
+  return `
+    <div class="summary-grid compact-metrics consume-list-summary">
+      <div class="metric"><span>待处理课节</span><strong>${rows.length}</strong><small>未取消且未完成消课</small></div>
+      <div class="metric"><span>可确认消课</span><strong>${ready}</strong><small>已保存点名</small></div>
+      <div class="metric"><span>待点名</span><strong>${attendance}</strong><small>先补考勤再消课</small></div>
+    </div>`;
+}
+
+function renderConsumePendingRows(rows) {
+  if (!rows.length) {
+    return `<div class="stack-item"><strong>暂无待消课课节</strong><span class="muted">当前没有需要补点名或确认消课的课节。</span></div>`;
+  }
+
+  return rows
+    .map((lesson) => {
+      const status = consumePendingLessonStatus(lesson);
+      const studentCount = typeof lessonStudents === "function" ? lessonStudents(lesson).length : 0;
+      const attendanceText = typeof attendanceSummary === "function" ? attendanceSummary(lesson) : status.label;
+      return `<article class="consume-pending-card">
+        <div>
+          <strong>${escapeHtml(lesson.date)} ${escapeHtml(lesson.time)} ${escapeHtml(lesson.target)}</strong>
+          <div class="consume-pending-meta">
+            ${tag(status.label, status.tone)}
+            ${tag(`${studentCount} 名学员`, studentCount ? "green" : "amber")}
+            <span class="muted">${escapeHtml(lesson.subject)} / ${escapeHtml(lesson.teacher)} / ${escapeHtml(attendanceText)}</span>
+          </div>
+        </div>
+        <div class="action-row">
+          <button class="small-button" type="button" data-attendance-lesson="${escapeHtml(lesson.id)}">点名</button>
+          <button class="small-button" type="button" data-finish-lesson="${escapeHtml(lesson.id)}" ${status.key === "ready" ? "" : "disabled"}>确认消课</button>
+        </div>
+      </article>`;
+    })
+    .join("");
+}
+
+function renderConsumePendingPanel() {
+  const rows = consumePendingLessons();
+  return `
+    <section class="section consume-pending-panel">
+      <div class="section-head compact-head">
+        <h3>待消课课节</h3>
+        <span class="muted">已点名课节可直接确认消课；未点名课节先补点名。</span>
+      </div>
+      <div class="section-body">
+        ${consumePendingSummary(rows)}
+        <div class="consume-pending-list">${renderConsumePendingRows(rows)}</div>
+      </div>
+    </section>`;
+}
+
 renderConsume = function renderConsumeWithFilters() {
   const allRows = appState.ledger.filter(matchesRow);
   const visibleRows = appState.ledger.filter(consumeMatchesListFilters).sort(compareConsumeRows);
@@ -217,7 +319,8 @@ renderConsume = function renderConsumeWithFilters() {
         ${renderConsumeFilterToolbar()}
         ${table(["时间", "学员", "关联课节", "类型", "课时变动", "变动前后", "操作人", "待核对", "操作"], renderConsumeRows(visibleRows))}
       </div>
-    </section>`;
+    </section>
+    ${renderConsumePendingPanel()}`;
 };
 
 document.addEventListener("change", (event) => {

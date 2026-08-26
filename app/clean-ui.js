@@ -53,6 +53,12 @@ const cleanUiSupportPanelMeta = {
     { key: "lessons", selector: ".feedback-lessons-panel", label: "课节状态", hint: "查看已上课节反馈状态" },
     { key: "records", selector: ".feedback-records-panel", label: "反馈记录", hint: "查看学员反馈留档" },
     { key: "parent", selector: ".parent-message-audit-panel", label: "家长通知", hint: "核对话术作业和风险" }
+  ],
+  leads: [
+    { key: "detail", selector: ".lead-detail-panel", label: "线索明细", hint: "筛选跟进转化和试听动作" }
+  ],
+  followUp: [
+    { key: "records", selector: ".follow-records-panel", label: "跟进记录", hint: "查看续费回访和处理结果" }
   ]
 };
 
@@ -63,7 +69,9 @@ const cleanUiSupportGroupMeta = {
   orders: { title: "订单辅助" },
   teacherDesk: { title: "老师辅助" },
   leaves: { title: "请假辅助" },
-  feedback: { title: "反馈辅助" }
+  feedback: { title: "反馈辅助" },
+  leads: { title: "招生辅助" },
+  followUp: { title: "续费辅助" }
 };
 
 function cleanUiViewKey() {

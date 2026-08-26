@@ -264,7 +264,7 @@ renderFollowUp = function renderFollowUpWithFilters() {
         </div>
       </div>
     </section>
-    <section class="section">
+    <section class="section follow-records-panel">
       <div class="section-head compact-head"><h3>跟进记录</h3><span class="muted">支持搜索学员、手机号、跟进人和备注</span></div>
       <div class="follow-table-scope">${table(["学员", "类型/优先级", "跟进人", "到期日", "状态/结果", "待处理", "备注", "操作"], renderFollowRows(visibleRows))}</div>
     </section>`;

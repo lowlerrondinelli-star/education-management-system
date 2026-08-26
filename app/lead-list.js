@@ -306,7 +306,7 @@ renderLeads = function renderLeadsWithFilters() {
         </div>
       </div>
     </section>
-    <section class="section">
+    <section class="section lead-detail-panel">
       <div class="section-head">
         <div>
           <h3>线索明细</h3>

@@ -48,6 +48,48 @@ importStyle.textContent = `
     gap: 10px;
   }
 
+  .import-guide-card {
+    display: grid;
+    grid-template-columns: minmax(210px, 0.9fr) minmax(260px, 1.3fr) minmax(210px, 0.9fr);
+    gap: 12px;
+    align-items: stretch;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .import-guide-block {
+    display: grid;
+    align-content: start;
+    gap: 7px;
+    min-width: 0;
+  }
+
+  .import-guide-block strong {
+    color: var(--ink);
+  }
+
+  .import-guide-tags,
+  .import-guide-actions,
+  .import-guide-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .import-guide-list span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--soft);
+    color: var(--ink);
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
   .import-result-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(120px, 1fr));
@@ -65,6 +107,7 @@ importStyle.textContent = `
 
   @media (max-width: 900px) {
     .import-controls,
+    .import-guide-card,
     .import-result-grid {
       grid-template-columns: 1fr;
     }
@@ -225,6 +268,150 @@ const importProfiles = {
   }
 };
 
+const importProfileGuides = {
+  students: {
+    order: "第 1 步",
+    depends: ["可直接导入"],
+    checks: ["手机号去重", "年级渠道统一", "班级可填待分班"],
+    prepare: ["先统一手机号格式", "渠道和年级用下拉口径", "未定班级填待分班"],
+    after: "导入后到学员列表核对重复，再进入报名办理台完成报名、分班。",
+    previewType: "students"
+  },
+  courses: {
+    order: "第 2 步",
+    depends: ["可直接导入"],
+    checks: ["课程名不重复", "课时为数字", "价格为数字"],
+    prepare: ["先定课程命名", "确认售卖状态", "金额课时只填数字"],
+    after: "课程会被订单和班级引用，先导入课程能减少后续失败行。",
+    previewType: "courses"
+  },
+  rooms: {
+    order: "第 3 步",
+    depends: ["可直接导入"],
+    checks: ["教室名不重复", "容量大于 0"],
+    prepare: ["按校区统一命名", "容量只填数字", "状态选可排课或停用"],
+    after: "教室导入后可直接用于班级默认教室和排课冲突检查。",
+    previewType: "rooms"
+  },
+  employees: {
+    order: "第 4 步",
+    depends: ["角色权限"],
+    checks: ["角色已存在", "手机号格式", "是否教师"],
+    prepare: ["先核对角色权限", "教师要填科目年级", "每周容量只填数字"],
+    after: "标记为教师的员工会同步进入教师资料，用于班级和排课选择。",
+    previewType: "employees"
+  },
+  classes: {
+    order: "第 5 步",
+    depends: ["课程资料", "教师资料", "教室资料"],
+    checks: ["课程存在", "教师存在", "教室存在", "容量扣课为数字"],
+    prepare: ["先导入课程教师教室", "班级名称保持唯一", "扣课规则用数字"],
+    after: "班级导入后先看容量和默认资源，再做订单分班和批量排课。",
+    previewType: "classes"
+  },
+  orders: {
+    order: "第 6 步",
+    depends: ["学员档案", "班级资料"],
+    checks: ["学员存在", "班级存在", "金额课时", "有效期日期"],
+    prepare: ["先导入学员和班级", "购买课时/实收只填数字", "有效期用 2027-02-28"],
+    after: "订单导入会更新学员课程、班级、余额和欠费，并生成收款流水。",
+    previewType: "orders"
+  },
+  classSchedules: {
+    order: "第 7 步",
+    depends: ["班级资料", "教师资料", "教室资料"],
+    checks: ["班级存在", "日期时间", "教师教室冲突"],
+    prepare: ["先确认班级默认资源", "时间用 18:30 格式", "重复课必须有结束日期"],
+    after: "导入后会跳过冲突课节，建议马上查看排课冲突和课表。",
+    previewType: "lessons"
+  },
+  oneToOneSchedules: {
+    order: "第 8 步",
+    depends: ["教师资料", "教室资料"],
+    checks: ["1 对 1 名称", "日期时间", "教师时间冲突"],
+    prepare: ["名称包含学员和课程", "先确认教师教室", "不重复课可不填结束日期"],
+    after: "一对一导入后可在课表里按学员姓名或老师筛选核对。",
+    previewType: "lessons"
+  }
+};
+
+function fallbackImportGuideBlockers(type) {
+  const count = (key) => appState[key]?.length || 0;
+  const blockers = [];
+  if (type === "orders" && !count("students")) blockers.push("缺少学员档案");
+  if (type === "orders" && !count("classes")) blockers.push("缺少班级资料");
+  if (type === "employees" && !count("roles")) blockers.push("缺少角色权限");
+  if (type === "classes" && !count("courses")) blockers.push("缺少课程资料");
+  if (type === "classes" && !count("teachers")) blockers.push("缺少教师资料");
+  if (type === "classes" && !count("rooms")) blockers.push("缺少教室资料");
+  if (type === "classSchedules" && !count("classes")) blockers.push("缺少班级资料");
+  if (type === "classSchedules" && !count("teachers")) blockers.push("缺少教师资料");
+  if (type === "classSchedules" && !count("rooms")) blockers.push("缺少教室资料");
+  if (type === "oneToOneSchedules" && !count("teachers")) blockers.push("缺少教师资料");
+  if (type === "oneToOneSchedules" && !count("rooms")) blockers.push("缺少教室资料");
+  return blockers;
+}
+
+function importGuideBlockers(type) {
+  return typeof importReadyBlockers === "function" ? importReadyBlockers(type) : fallbackImportGuideBlockers(type);
+}
+
+function importGuideWarnings(type) {
+  return typeof importReadyWarnings === "function" ? importReadyWarnings(type) : [];
+}
+
+function importGuideTemplates(type) {
+  if (typeof localTemplateRows !== "function") return [];
+  return localTemplateRows().filter((row) => row.profile === type).map((row) => row.kind);
+}
+
+function renderImportGuide(type) {
+  const profile = importProfiles[type] || importProfiles.students;
+  const guide = importProfileGuides[type] || importProfileGuides.students;
+  const blockers = importGuideBlockers(type);
+  const warnings = importGuideWarnings(type);
+  const status = blockers.length
+    ? { label: "先补资料", tone: "red" }
+    : warnings.length
+      ? { label: "可导入需注意", tone: "amber" }
+      : { label: "可导入", tone: "green" };
+  const templateKinds = [...new Set(importGuideTemplates(type))];
+  const chooseDisabled = blockers.length ? "disabled" : "";
+
+  return `
+    <div class="import-guide-card">
+      <div class="import-guide-block">
+        <strong>${escapeHtml(profile.title)}导入准备</strong>
+        <div class="import-guide-tags">
+          ${tag(guide.order, "")}
+          ${tag(status.label, status.tone)}
+          ${(templateKinds.length ? templateKinds : ["CSV样例"]).map((item) => tag(item, "green")).join("")}
+        </div>
+        <span class="muted">${escapeHtml(blockers.length ? `先处理：${blockers.join("、")}` : guide.after)}</span>
+      </div>
+      <div class="import-guide-block">
+        <strong>导入前核对</strong>
+        <div class="import-guide-list">
+          ${guide.depends.map((item) => `<span>依赖：${escapeHtml(item)}</span>`).join("")}
+          ${guide.checks.map((item) => `<span>校验：${escapeHtml(item)}</span>`).join("")}
+          ${warnings.map((item) => `<span>提醒：${escapeHtml(item)}</span>`).join("")}
+        </div>
+      </div>
+      <div class="import-guide-block">
+        <strong>老师下一步</strong>
+        <div class="import-guide-list">
+          ${guide.prepare.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+        </div>
+        <div class="import-guide-actions">
+          <button class="small-button" type="button" data-import-sample="${escapeHtml(type)}">下载样例</button>
+          <button class="small-button" type="button" data-import-template-profile="${escapeHtml(type)}">看模板</button>
+          <button class="small-button" type="button" data-import-preview="${escapeHtml(guide.previewType)}">看数据</button>
+          <button class="primary-action" type="button" data-import-choose="${escapeHtml(type)}" ${chooseDisabled}>选择CSV</button>
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderImportPanel() {
   const report = lastImportReport;
   const selectedType = report?.type || pendingImportType || "students";
@@ -252,6 +439,7 @@ function renderImportPanel() {
         <button class="primary-action" type="button" id="chooseImportFile">选择 CSV 文件</button>
         <span class="muted">CSV 表头可使用本系统导出的中文列名；批量日程会自动跳过冲突课节。</span>
       </div>
+      ${renderImportGuide(selectedType)}
       ${report ? renderImportReport(report) : ""}
     </div>`;
 }
@@ -979,10 +1167,45 @@ document.addEventListener("click", (event) => {
     importFileInput.click();
   }
 
+  const chooseButton = event.target.closest("[data-import-choose]");
+  if (chooseButton && !chooseButton.disabled) {
+    pendingImportType = chooseButton.dataset.importChoose || "students";
+    const importTypeSelect = document.querySelector("#importType");
+    if (importTypeSelect) importTypeSelect.value = pendingImportType;
+    importFileInput.click();
+  }
+
   const sampleButton = event.target.closest("[data-import-sample]");
   if (sampleButton) {
     const profile = importProfiles[sampleButton.dataset.importSample];
     downloadText(profile.fileName, buildImportCsv(profile.sample, profile.headers), "text/csv;charset=utf-8");
+  }
+
+  const previewButton = event.target.closest("[data-import-preview]");
+  if (previewButton) {
+    if (typeof dataPreviewType !== "undefined") dataPreviewType = previewButton.dataset.importPreview || "students";
+    if (typeof dataPreviewOnlyIssues !== "undefined") dataPreviewOnlyIssues = false;
+    renderView();
+  }
+
+  const templateButton = event.target.closest("[data-import-template-profile]");
+  if (templateButton) {
+    pendingImportType = templateButton.dataset.importTemplateProfile || "students";
+    if (typeof localTemplateProfileFilter !== "undefined") localTemplateProfileFilter = pendingImportType;
+    if (typeof localTemplateKindFilter !== "undefined") localTemplateKindFilter = "all";
+    if (typeof localTemplateCheckFilter !== "undefined") localTemplateCheckFilter = "all";
+    if (typeof localTemplateSortMode !== "undefined") localTemplateSortMode = "order";
+    if (typeof cleanUiActiveSupportPanels !== "undefined") cleanUiActiveSupportPanels.templates = "templates:local";
+    setNotice("templates", `已筛选 ${importProfiles[pendingImportType]?.title || "对应"} 的本地 Excel 模板，可对照后另存为 CSV。`, "green");
+    setView("templates");
+  }
+});
+
+document.addEventListener("change", (event) => {
+  if (event.target.id === "importType") {
+    pendingImportType = event.target.value || "students";
+    lastImportReport = null;
+    renderView();
   }
 });
 

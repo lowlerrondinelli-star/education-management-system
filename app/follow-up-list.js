@@ -28,11 +28,25 @@ followUpListStyle.textContent = `
     max-width: 260px;
   }
 
+  td.follow-note {
+    min-width: 220px;
+    max-width: 340px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.55;
+  }
+
   @media (max-width: 650px) {
     .follow-filter-toolbar,
     .follow-filter-toolbar label,
     .follow-filter-toolbar select {
       width: 100%;
+    }
+
+    .follow-table-scope .table-wrap {
+      margin: 0;
+      padding: 0;
+      max-width: 100%;
     }
   }
 `;
@@ -252,7 +266,7 @@ renderFollowUp = function renderFollowUpWithFilters() {
     </section>
     <section class="section">
       <div class="section-head compact-head"><h3>跟进记录</h3><span class="muted">支持搜索学员、手机号、跟进人和备注</span></div>
-      ${table(["学员", "类型/优先级", "跟进人", "到期日", "状态/结果", "待处理", "备注", "操作"], renderFollowRows(visibleRows))}
+      <div class="follow-table-scope">${table(["学员", "类型/优先级", "跟进人", "到期日", "状态/结果", "待处理", "备注", "操作"], renderFollowRows(visibleRows))}</div>
     </section>`;
 };
 

@@ -1,4 +1,4 @@
-const followUpTypes = ["课时不足", "欠费补缴", "意向回访", "常规回访"];
+const followUpTypes = ["课时不足", "欠费补缴", "高风险反馈", "意向回访", "常规回访"];
 const followUpResults = ["待联系", "已联系", "未接通", "约定缴费", "已续费", "暂不考虑"];
 
 const followUpStyle = document.createElement("style");

@@ -37,7 +37,7 @@ const authClickPolicies = [
   ["[data-student-order], [data-student-orders], [data-pay-order], [data-finance-adjust], [data-class-orders]", "orders", "订单/收款"],
   ["[data-student-class], [data-class-assign]", "classes", "分班"],
   ["[data-student-follow]", "followUp", "续费跟进"],
-  ["[data-attendance-lesson], [data-finish-lesson], [data-schedule-adjust], [data-student-schedule]", "schedule", "排课/上课"],
+  ["[data-attendance-lesson], [data-finish-lesson], [data-schedule-adjust], [data-student-schedule], [data-lesson-schedule]", "schedule", "排课/上课"],
   ["[data-feedback-lesson]", "feedback", "课后反馈"],
   ["[data-schedule-leave], [data-lesson-leave], [data-leave-approve], [data-leave-reject], [data-leave-makeup], [data-leave-complete]", "leaves", "请假补课"],
   ["[data-export], #backupData, #restoreData, #resetDemo", "data", "数据导入导出"]

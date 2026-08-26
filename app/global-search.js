@@ -147,6 +147,7 @@ function buildOrderSearchResults(keyword) {
     .filter((order) => searchHaystack([order.id, order.student, order.course, order.className, order.owner, order.payMethod, order.expireAt]).includes(keyword))
     .map((order) => {
       const remaining = Number(order.bought || 0) + Number(order.gift || 0) - Number(order.used || 0);
+      const student = searchStudentByName(order.student);
       return {
         type: "订单",
         title: `${order.student} ${order.id}`,
@@ -155,9 +156,11 @@ function buildOrderSearchResults(keyword) {
         actions: [
           Number(order.debt || 0) > 0
             ? `<button class="small-button" type="button" data-pay-order="${escapeHtml(order.id)}">补缴</button>`
-            : `<button class="small-button" type="button" data-go="orders">查看订单</button>`,
-          remaining > 0 && remaining <= 3 && searchStudentByName(order.student)
-            ? `<button class="small-button" type="button" data-student-follow="${escapeHtml(searchStudentByName(order.student).id)}">续费跟进</button>`
+            : student
+              ? `<button class="small-button" type="button" data-student-orders="${escapeHtml(student.id)}">学员订单</button>`
+              : `<button class="small-button" type="button" data-class-orders="${escapeHtml(order.className)}">班级订单</button>`,
+          remaining > 0 && remaining <= 3 && student
+            ? `<button class="small-button" type="button" data-student-follow="${escapeHtml(student.id)}">续费跟进</button>`
             : ""
         ].filter(Boolean)
       };
@@ -173,7 +176,11 @@ function buildClassSearchResults(keyword) {
       title: item.name,
       meta: `${item.course} / ${item.teacher} / ${item.room}`,
       tags: [tag(item.status, statusTone(item.status)), tag(`${item.students}/${item.capacity} 人`)],
-      actions: [`<button class="small-button" type="button" data-go="classes">查看班级</button>`]
+      actions: [
+        `<button class="small-button" type="button" data-class-detail="${escapeHtml(item.name)}">班级详情</button>`,
+        `<button class="small-button" type="button" data-class-schedule="${escapeHtml(item.name)}">排课</button>`,
+        `<button class="small-button" type="button" data-class-orders="${escapeHtml(item.name)}">班级订单</button>`
+      ]
     }));
 }
 
@@ -188,7 +195,7 @@ function buildLessonSearchResults(keyword) {
       meta: `${dayFromDate(lesson.date)} ${lesson.time} / ${lesson.subject} / ${lesson.teacher} / ${lesson.room}`,
       tags: [tag(lesson.status, statusTone(lesson.status))],
       actions: [
-        `<button class="small-button" type="button" data-go="schedule">看课表</button>`,
+        `<button class="small-button" type="button" data-lesson-schedule="${escapeHtml(lesson.id)}">定位课表</button>`,
         `<button class="small-button" type="button" data-attendance-lesson="${escapeHtml(lesson.id)}">点名</button>`,
         `<button class="small-button" type="button" data-feedback-lesson="${escapeHtml(lesson.id)}">反馈</button>`
       ]
@@ -241,7 +248,7 @@ function buildLeadSearchResults(keyword) {
       title: item.name || item.student,
       meta: `${item.phone || "-"} / ${item.grade || "-"} / ${item.course || "-"} / ${item.owner || "-"}`,
       tags: [tag(item.status || "线索", statusTone(item.status))],
-      actions: [`<button class="small-button" type="button" data-go="leads">查看线索</button>`]
+      actions: [`<button class="small-button" type="button" data-lead-record="${escapeHtml(item.id)}">线索记录</button>`]
     }));
 }
 

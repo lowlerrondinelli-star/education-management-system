@@ -1179,6 +1179,15 @@ function openScheduleForStudent(studentId) {
   setView("schedule");
 }
 
+function openScheduleForLesson(lessonId) {
+  const lesson = appState.lessons.find((item) => item.id === lessonId);
+  if (!lesson) return;
+  searchTerm = lesson.target;
+  if (globalSearch) globalSearch.value = lesson.target;
+  setNotice("schedule", `已定位 ${lesson.target} ${lesson.date} 的课表记录，可直接点名、反馈或调课。`, "amber");
+  setView("schedule");
+}
+
 function openLeadRecord(leadId) {
   if (typeof ensureLeadData === "function") ensureLeadData();
   const lead = appState.leads?.find((item) => item.id === leadId);
@@ -2076,6 +2085,9 @@ document.addEventListener("click", (event) => {
 
   const studentScheduleButton = event.target.closest("[data-student-schedule]");
   if (studentScheduleButton) openScheduleForStudent(studentScheduleButton.dataset.studentSchedule);
+
+  const lessonScheduleButton = event.target.closest("[data-lesson-schedule]");
+  if (lessonScheduleButton) openScheduleForLesson(lessonScheduleButton.dataset.lessonSchedule);
 
   const classShortcut = event.target.closest("[data-student-class]");
   if (classShortcut) {

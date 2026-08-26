@@ -70,8 +70,22 @@ renderView = function renderViewWithLeave() {
   baseRenderViewForLeave();
 };
 
-function leaveStudentOptions(selectedId = "") {
-  return appState.students
+function leaveSortedLessons() {
+  return appState.lessons
+    .filter((lesson) => lesson.status !== "已取消")
+    .slice()
+    .sort((left, right) => `${left.date} ${left.time}`.localeCompare(`${right.date} ${right.time}`));
+}
+
+function leaveStudentsForLesson(lessonId) {
+  const lesson = appState.lessons.find((item) => item.id === lessonId);
+  if (!lesson) return appState.students;
+  const rows = lessonStudents(lesson);
+  return rows.length ? rows : appState.students;
+}
+
+function leaveStudentOptions(selectedId = "", lessonId = "") {
+  return leaveStudentsForLesson(lessonId)
     .map((item) => `<option value="${escapeHtml(item.id)}" ${item.id === selectedId ? "selected" : ""}>${escapeHtml(item.name)}（${escapeHtml(item.className)}）</option>`)
     .join("");
 }
@@ -81,12 +95,19 @@ function leaveLessonLabel(lesson) {
 }
 
 function leaveLessonOptions(selectedId = "") {
-  return appState.lessons
-    .filter((lesson) => lesson.status !== "已取消")
-    .slice()
-    .sort((left, right) => `${left.date} ${left.time}`.localeCompare(`${right.date} ${right.time}`))
+  return leaveSortedLessons()
     .map((lesson) => `<option value="${escapeHtml(lesson.id)}" ${lesson.id === selectedId ? "selected" : ""}>${escapeHtml(leaveLessonLabel(lesson))}</option>`)
     .join("");
+}
+
+function syncLeaveLessonStudents(form) {
+  if (!form?.elements?.studentId || !form.elements.lessonId) return;
+  const selectedLessonId = form.elements.lessonId.value;
+  const currentStudentId = form.elements.studentId.value;
+  const rows = leaveStudentsForLesson(selectedLessonId);
+  const nextStudentId = rows.some((student) => student.id === currentStudentId) ? currentStudentId : rows[0]?.id || "";
+  form.elements.studentId.innerHTML = leaveStudentOptions(nextStudentId, selectedLessonId);
+  form.elements.studentId.value = nextStudentId;
 }
 
 function leaveTypeOptions(selectedValue = "事假") {
@@ -201,6 +222,8 @@ function activeDuplicateLeave(studentId, lessonId) {
 }
 
 function renderLeaveQuickForm() {
+  const defaultLesson = leaveSortedLessons()[0];
+  const defaultStudent = leaveStudentsForLesson(defaultLesson?.id)[0];
   return `
     <form class="operation-panel" id="leaveRequestForm">
       <div>
@@ -209,8 +232,8 @@ function renderLeaveQuickForm() {
       </div>
       <div class="operation-grid">
         <label>请假场景模板<select name="leaveScenario">${leaveScenarioOptions("sickMakeup")}</select></label>
-        <label>学员<select name="studentId" required>${leaveStudentOptions()}</select></label>
-        <label>关联课节<select name="lessonId" required>${leaveLessonOptions()}</select></label>
+        <label>学员<select name="studentId" required>${leaveStudentOptions(defaultStudent?.id || "", defaultLesson?.id || "")}</select></label>
+        <label>关联课节<select name="lessonId" required>${leaveLessonOptions(defaultLesson?.id || "")}</select></label>
         <label>请假类型<select name="leaveType">${leaveTypeOptions("病假")}</select></label>
         <label>申请人<select name="contact" required>${typeof leaveContactOptions === "function" ? leaveContactOptions("家长") : "<option>家长</option>"}</select></label>
         <label>处理人<select name="operator" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions("前台老师") : "<option>前台老师</option>"}</select></label>
@@ -667,8 +690,13 @@ document.addEventListener("submit", (event) => {
 });
 
 document.addEventListener("change", (event) => {
-  if (event.target.name !== "leaveScenario" || !event.target.closest("#leaveRequestForm")) return;
-  applyLeaveScenario(event.target.form, event.target.value);
+  if (event.target.name === "leaveScenario" && event.target.closest("#leaveRequestForm")) {
+    applyLeaveScenario(event.target.form, event.target.value);
+  }
+
+  if (event.target.name === "lessonId" && event.target.closest("#leaveRequestForm")) {
+    syncLeaveLessonStudents(event.target.form);
+  }
 });
 
 ensureLeaveData();

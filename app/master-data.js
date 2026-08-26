@@ -259,8 +259,8 @@ function renderCourseForm() {
       <h4>新增课程</h4>
       <div class="operation-grid">
         <label>课程名称<input name="name" required placeholder="例如 初一数学同步班" /></label>
-        <label>科目<input name="subject" required value="数学" /></label>
-        <label>年级<input name="grade" required value="初一年级" /></label>
+        <label>科目<select name="subject" required>${subjectChoiceOptions("数学")}</select></label>
+        <label>年级<select name="grade" required>${gradeChoiceOptions("初一年级")}</select></label>
         <label>课程类型<select name="type"><option>普通课程</option><option>组合课程</option><option>一对一</option></select></label>
         <label>授课方式<select name="mode"><option>线下</option><option>线上</option><option>混合</option></select></label>
         <label>标准课时<input name="hours" type="number" min="1" value="20" required /></label>
@@ -277,8 +277,8 @@ function renderTeacherForm() {
       <div class="operation-grid">
         <label>教师姓名<input name="name" required placeholder="例如 数学-李老师" /></label>
         <label>手机号<input name="phone" maxlength="11" /></label>
-        <label>科目<input name="subjects" required value="数学" /></label>
-        <label>年级<input name="grades" required value="初中" /></label>
+        <label>科目<select name="subjects" required>${staffSubjectOptions("数学")}</select></label>
+        <label>年级<select name="grades" required>${staffGradeOptions("初中")}</select></label>
         <label>角色<select name="role"><option>任课老师</option><option>助教</option><option>班主任</option></select></label>
         <label>每周容量<input name="weeklyHours" type="number" min="0" value="20" /></label>
       </div>
@@ -292,7 +292,7 @@ function renderRoomForm() {
       <h4>新增教室</h4>
       <div class="operation-grid">
         <label>教室名称<input name="name" required placeholder="例如 东楼202室" /></label>
-        <label>校区<input name="campus" required value="主校区" /></label>
+        <label>校区<select name="campus" required>${campusChoiceOptions("主校区")}</select></label>
         <label>容量<input name="capacity" type="number" min="1" value="12" /></label>
         <label>教室类型<select name="type"><option>线下教室</option><option>线上教室</option><option>自习室</option></select></label>
         <label>备注<input name="note" placeholder="适合班型或设备" /></label>

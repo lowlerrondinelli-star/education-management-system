@@ -390,6 +390,22 @@ function staffGradeOptions(selectedValue = "初中") {
   );
 }
 
+function campusChoiceOptions(selectedValue = "主校区") {
+  return choiceOptions(
+    [
+      "主校区",
+      "东校区",
+      "西校区",
+      "线上",
+      "临时校区",
+      ...(appState.rooms || []).map((item) => item.campus),
+      ...(appState.classes || []).map((item) => (text(item.room).includes("线上") ? "线上" : "主校区")),
+      ...(appState.employees || []).map((item) => item.campus)
+    ],
+    selectedValue
+  );
+}
+
 function subjectChoiceOptions(selectedValue = "数学") {
   return choiceOptions(
     [

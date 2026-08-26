@@ -57,8 +57,33 @@ attendanceStyle.textContent = `
     gap: 6px;
   }
 
+  .consume-confirm-list {
+    display: grid;
+    gap: 8px;
+    margin: 14px 0;
+    max-height: min(48vh, 480px);
+    overflow: auto;
+  }
+
+  .consume-confirm-row {
+    display: grid;
+    grid-template-columns: minmax(120px, 1fr) 120px 120px 100px;
+    gap: 10px;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px;
+    background: #fff;
+  }
+
+  .consume-confirm-row strong,
+  .consume-confirm-row span {
+    min-width: 0;
+  }
+
   @media (max-width: 1050px) {
-    .attendance-row {
+    .attendance-row,
+    .consume-confirm-row {
       grid-template-columns: 1fr;
     }
   }
@@ -182,6 +207,128 @@ function applyAttendanceScenario(form, scenario) {
     });
   }
   updateAttendanceDraftSummary(form);
+}
+
+function consumeConfirmScenarioOptions(selectedValue = "attendance") {
+  const scenarios = [
+    ["attendance", "按点名结果消课"],
+    ["riskHold", "欠费/零课时学员先不扣"],
+    ["allPresent", "全部到课并消课"],
+    ["allLeave", "整节请假不消课"]
+  ];
+  return scenarios.map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(label)}</option>`).join("");
+}
+
+function consumeStatusForScenario(recordItem, student, scenario) {
+  if (scenario === "allPresent") return "到课";
+  if (scenario === "allLeave") return "请假";
+  if (scenario === "riskHold" && (Number(student?.debt || 0) > 0 || Number(student?.balance ?? recordItem.balance) <= 0)) return "请假";
+  return recordItem.status || "到课";
+}
+
+function consumeConfirmRows(lesson, scenario = "attendance") {
+  const record = attendanceForLesson(lesson);
+  const deduct = lessonDeduct(lesson);
+  const studentsById = new Map(appState.students.map((student) => [student.id, student]));
+  return record.records.map((item) => {
+    const student = studentsById.get(item.studentId);
+    const status = consumeStatusForScenario(item, student, scenario);
+    const before = Number(student?.balance ?? item.balance ?? 0);
+    const shouldDeduct = canDeductAttendance(status);
+    const change = shouldDeduct ? Math.min(before, deduct) : 0;
+    const after = Math.max(0, before - change);
+    return {
+      ...item,
+      status,
+      before,
+      change,
+      after,
+      deduct,
+      debt: Number(student?.debt || 0),
+      shouldDeduct
+    };
+  });
+}
+
+function consumeConfirmSummary(rows) {
+  const deductedRows = rows.filter((row) => row.shouldDeduct);
+  const skippedRows = rows.length - deductedRows.length;
+  const totalChange = deductedRows.reduce((sum, row) => sum + row.change, 0);
+  const shortage = deductedRows.filter((row) => row.before < row.deduct).length;
+  return `<div class="attendance-draft-summary">
+    ${tag(`消课 ${deductedRows.length} 人`, "green")}
+    ${tag(`不消课 ${skippedRows} 人`, skippedRows ? "amber" : "green")}
+    ${tag(`合计 ${totalChange} 课时`, "green")}
+    ${shortage ? tag(`课时不足 ${shortage} 人`, "red") : tag("余额正常", "green")}
+  </div>`;
+}
+
+function renderConsumeConfirmRows(rows) {
+  return rows
+    .map(
+      (row) => `<div class="consume-confirm-row">
+        <strong>${escapeHtml(row.student)}<br><span class="muted">${row.debt > 0 ? `欠费 ${money(row.debt)}` : "无欠费"}</span></strong>
+        <span>${tag(row.status, row.shouldDeduct ? "green" : "amber")}</span>
+        <span>${escapeHtml(row.before)} -> ${escapeHtml(row.after)}</span>
+        <span class="consume-change ${row.change ? "negative" : ""}">${row.change ? `-${escapeHtml(row.change)}` : "不扣"}</span>
+      </div>`
+    )
+    .join("");
+}
+
+function updateConsumeConfirmPreview(form) {
+  const lesson = appState.lessons.find((item) => item.id === form?.dataset.lessonId);
+  if (!lesson) return;
+  const scenario = form.elements.consumeScenario?.value || "attendance";
+  const rows = consumeConfirmRows(lesson, scenario);
+  const summary = form.querySelector("[data-consume-confirm-summary]");
+  const list = form.querySelector("[data-consume-confirm-list]");
+  if (summary) summary.innerHTML = consumeConfirmSummary(rows);
+  if (list) list.innerHTML = renderConsumeConfirmRows(rows);
+}
+
+function applyConsumeConfirmScenario(lesson, scenario) {
+  const record = attendanceForLesson(lesson);
+  const studentsById = new Map(appState.students.map((student) => [student.id, student]));
+  record.records = record.records.map((item) => {
+    const student = studentsById.get(item.studentId);
+    const status = consumeStatusForScenario(item, student, scenario);
+    return {
+      ...item,
+      status,
+      deduct: canDeductAttendance(status)
+    };
+  });
+  record.operator = lesson.teacher;
+  record.updatedAt = new Date().toLocaleString("zh-CN", { hour12: false });
+}
+
+function renderConsumeConfirmDialog(lessonId) {
+  const lesson = appState.lessons.find((item) => item.id === lessonId);
+  if (!lesson || lesson.status === "已上课") return;
+  const rows = consumeConfirmRows(lesson, "attendance");
+  attendanceDialogBody.innerHTML = `
+    <form method="dialog" id="consumeConfirmForm" data-lesson-id="${escapeHtml(lesson.id)}">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">消课确认</p>
+          <h3>${escapeHtml(lesson.target)}</h3>
+          <span class="muted">${escapeHtml(lesson.date)} ${escapeHtml(lesson.time)} · ${escapeHtml(lesson.teacher)} · 每人扣 ${escapeHtml(lessonDeduct(lesson))} 课时</span>
+        </div>
+        <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
+      </div>
+      <div class="attendance-quickbar">
+        <label>消课场景模板<select name="consumeScenario">${consumeConfirmScenarioOptions("attendance")}</select></label>
+        <div data-consume-confirm-summary>${consumeConfirmSummary(rows)}</div>
+      </div>
+      <div class="consume-confirm-list" data-consume-confirm-list>${renderConsumeConfirmRows(rows)}</div>
+      <div class="dialog-actions">
+        <span class="muted">确认后会锁定本节考勤，并生成课时流水。</span>
+        <button value="cancel" type="submit">取消</button>
+        <button class="primary-action" value="default" type="submit">确认生成流水</button>
+      </div>
+    </form>`;
+  attendanceDialog.showModal();
 }
 
 const baseRenderScheduleForAttendance = renderSchedule;
@@ -355,9 +502,28 @@ document.addEventListener("click", (event) => {
   }
 });
 
+document.addEventListener(
+  "click",
+  (event) => {
+    const finishButton = event.target.closest("[data-finish-lesson]");
+    if (!finishButton) return;
+    const lesson = appState.lessons.find((item) => item.id === finishButton.dataset.finishLesson);
+    if (!lesson || lesson.status === "已上课") return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    renderConsumeConfirmDialog(lesson.id);
+  },
+  true
+);
+
 document.addEventListener("change", (event) => {
   if (event.target.name === "attendanceScenario" && event.target.closest("#attendanceForm")) {
     applyAttendanceScenario(event.target.form, event.target.value);
+    return;
+  }
+
+  if (event.target.name === "consumeScenario" && event.target.closest("#consumeConfirmForm")) {
+    updateConsumeConfirmPreview(event.target.form);
     return;
   }
 
@@ -367,10 +533,21 @@ document.addEventListener("change", (event) => {
 });
 
 document.addEventListener("submit", (event) => {
-  if (event.target.id !== "attendanceForm") return;
-  if (event.submitter?.value === "cancel") return;
-  event.preventDefault();
-  saveAttendance(event.target);
+  if (event.target.id === "attendanceForm") {
+    if (event.submitter?.value === "cancel") return;
+    event.preventDefault();
+    saveAttendance(event.target);
+  }
+
+  if (event.target.id === "consumeConfirmForm") {
+    if (event.submitter?.value === "cancel") return;
+    event.preventDefault();
+    const lesson = appState.lessons.find((item) => item.id === event.target.dataset.lessonId);
+    if (!lesson) return;
+    applyConsumeConfirmScenario(lesson, event.target.elements.consumeScenario?.value || "attendance");
+    attendanceDialog.close();
+    finishLesson(lesson.id);
+  }
 });
 
 ensureAttendanceData();

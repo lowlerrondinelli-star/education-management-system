@@ -28,6 +28,17 @@ studentFilterStyle.textContent = `
     max-width: 260px;
   }
 
+  .student-follow-summary {
+    display: grid;
+    gap: 4px;
+    min-width: 160px;
+    max-width: 240px;
+  }
+
+  .student-follow-summary .muted {
+    overflow-wrap: anywhere;
+  }
+
   @media (max-width: 650px) {
     .student-filter-toolbar,
     .student-filter-toolbar label,
@@ -91,6 +102,26 @@ function renderStudentRiskTags(student) {
   const reasons = studentRiskReasons(student);
   if (!reasons.length) return tag("正常", "green");
   return `<div class="student-risk-tags">${reasons.map((reason) => tag(reason.label, reason.tone)).join("")}</div>`;
+}
+
+function studentFollowUpSummary(student) {
+  if (typeof studentFollowUps !== "function") return `<span class="muted">暂无跟进</span>`;
+  const rows = studentFollowUps(student);
+  if (!rows.length) return `<span class="muted">暂无跟进</span>`;
+  const activeRows = rows
+    .filter((item) => item.status !== "已完成")
+    .sort((left, right) => text(left.dueDate).localeCompare(text(right.dueDate)));
+  const item = activeRows[0] || rows[0];
+  const dueDate = text(item.dueDate);
+  const today = typeof todayText === "function" ? todayText() : new Date().toISOString().slice(0, 10);
+  const tone = item.status === "已完成" ? "green" : dueDate <= today ? "red" : "amber";
+  const result = item.result || item.status || "待跟进";
+  return `
+    <div class="student-follow-summary">
+      <span>${tag(item.type || "跟进", tone)} ${escapeHtml(result)}</span>
+      <span class="muted">${escapeHtml(dueDate || "未定日期")} / ${escapeHtml(item.owner || "-")}</span>
+      <span class="muted">${escapeHtml(item.note || "-")}</span>
+    </div>`;
 }
 
 function studentClassFilterOptions() {
@@ -159,6 +190,7 @@ function studentListSummary(allStudents, visibleStudents) {
 
 renderStudents = function renderStudentsWithFilters() {
   if (typeof syncClassCounts === "function") syncClassCounts();
+  if (typeof ensureFollowUpData === "function") ensureFollowUpData();
 
   const allStudents = appState.students.filter(matchesRow);
   const visibleStudents = appState.students.filter(studentMatchesListFilters).sort(compareStudentsForList);
@@ -175,6 +207,7 @@ renderStudents = function renderStudentsWithFilters() {
       <td>${student.balance}</td>
       <td>${student.debt ? tag(money(student.debt), "red") : tag("无欠费", "green")}</td>
       <td>${renderStudentRiskTags(student)}</td>
+      <td>${studentFollowUpSummary(student)}</td>
       <td>
         <div class="action-row">
           <button class="small-button" type="button" data-student-detail="${escapeHtml(student.id)}">详情</button>
@@ -201,7 +234,7 @@ renderStudents = function renderStudentsWithFilters() {
         ${renderNotice("students")}
         ${studentListSummary(allStudents, visibleStudents)}
         ${renderStudentFilterToolbar()}
-        ${table(["学员", "手机号", "年级", "学校", "渠道", "意向/报读课程", "班级", "状态", "剩余课时", "欠费", "待处理", "操作"], rows)}
+        ${table(["学员", "手机号", "年级", "学校", "渠道", "意向/报读课程", "班级", "状态", "剩余课时", "欠费", "待处理", "跟进", "操作"], rows)}
       </div>
     </section>`;
 };

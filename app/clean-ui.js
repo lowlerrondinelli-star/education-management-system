@@ -27,12 +27,17 @@ const cleanUiSupportPanelMeta = {
   students: [
     { key: "enrollment", selector: ".enrollment-workbench", label: "报名办理", hint: "查看报名分班排课卡点" },
     { key: "operations", selector: ".student-ops-panel", label: "运营看板", hint: "查看欠费续费分班动作" }
+  ],
+  classes: [
+    { key: "operations", selector: ".class-ops-panel", label: "班级运营", hint: "查看容量欠费和补排动作" },
+    { key: "advisor", selector: ".class-advisor-panel", label: "智能分班", hint: "查看推荐班级和分班卡点" }
   ]
 };
 
 const cleanUiSupportGroupMeta = {
   schedule: { title: "课表辅助" },
-  students: { title: "学员辅助" }
+  students: { title: "学员辅助" },
+  classes: { title: "班级辅助" }
 };
 
 function cleanUiViewKey() {

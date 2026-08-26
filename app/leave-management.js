@@ -307,8 +307,8 @@ function renderLeaveMakeupDialog(id) {
         <label>补课日期<input name="date" type="date" value="${escapeHtml(date)}" required /></label>
         <label>开始时间<input name="startTime" type="time" value="${escapeHtml(time.start)}" required /></label>
         <label>结束时间<input name="endTime" type="time" value="${escapeHtml(time.end)}" required /></label>
-        <label>上课教师<input name="teacher" value="${escapeHtml(item.teacher || sourceLesson.teacher || "")}" required /></label>
-        <label>上课教室<input name="room" value="${escapeHtml(item.room || sourceLesson.room || "")}" required /></label>
+        <label>上课教师<select name="teacher" required>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(item.teacher || sourceLesson.teacher || "前台老师") : `<option>${escapeHtml(item.teacher || sourceLesson.teacher || "前台老师")}</option>`}</select></label>
+        <label>上课教室<select name="room" required>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(item.room || sourceLesson.room || "试听教室") : `<option>${escapeHtml(item.room || sourceLesson.room || "试听教室")}</option>`}</select></label>
         <label>操作人<input name="operator" value="${escapeHtml(item.operator || "前台老师")}" required /></label>
       </div>
       <div class="dialog-actions">

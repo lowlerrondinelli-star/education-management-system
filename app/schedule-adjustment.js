@@ -127,8 +127,8 @@ function renderScheduleAdjustmentDialog(kind, lessonId) {
         <label>上课日期<input name="date" type="date" value="${escapeHtml(date)}" ${isCancel ? "disabled" : "required"} /></label>
         <label>开始时间<input name="startTime" type="time" value="${escapeHtml(time.start)}" ${isCancel ? "disabled" : "required"} /></label>
         <label>结束时间<input name="endTime" type="time" value="${escapeHtml(time.end)}" ${isCancel ? "disabled" : "required"} /></label>
-        <label>上课教师<input name="teacher" value="${escapeHtml(lesson.teacher)}" ${isCancel ? "disabled" : "required"} /></label>
-        <label>上课教室<input name="room" value="${escapeHtml(lesson.room)}" ${isCancel ? "disabled" : "required"} /></label>
+        <label>上课教师<select name="teacher" ${isCancel ? "disabled" : "required"}>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(lesson.teacher) : `<option>${escapeHtml(lesson.teacher)}</option>`}</select></label>
+        <label>上课教室<select name="room" ${isCancel ? "disabled" : "required"}>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(lesson.room) : `<option>${escapeHtml(lesson.room)}</option>`}</select></label>
         <label>操作人<input name="operator" value="前台老师" required /></label>
       </div>
       <div class="form-grid" style="grid-template-columns:1fr;">

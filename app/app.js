@@ -271,6 +271,86 @@ function studentScenarioDefaults(scenario) {
   return defaults[scenario] || defaults.intent;
 }
 
+function studentSampleTemplates() {
+  const firstClass = appState.classes?.[0] || {};
+  const physicsClass = appState.classes?.find((item) => text(item.name).includes("物理")) || firstClass;
+  const englishClass = appState.classes?.find((item) => text(item.name).includes("英语")) || firstClass;
+  const mathClass = appState.classes?.find((item) => text(item.name).includes("数学")) || firstClass;
+  return {
+    custom: { label: "手动填写", hint: "保持当前字段，适合录入真实到访学员。" },
+    referralJunior: {
+      label: "转介绍初中数学",
+      scenario: "intent",
+      name: "赵一诺",
+      phone: "13900010001",
+      relation: "母亲",
+      grade: "初二年级",
+      school: "实验中学",
+      channel: "转介绍",
+      owner: "前台老师",
+      course: mathClass.course || "初二小组课/一对一",
+      status: "意向",
+      className: "待分班",
+      hint: "转介绍初中数学样例会进入报名办理台，适合前台快速演示建档。"
+    },
+    trialEnglish: {
+      label: "英语试听预约",
+      scenario: "trial",
+      name: "沈清禾",
+      phone: "13900010002",
+      relation: "母亲",
+      grade: "六年级",
+      school: "外国语小学",
+      channel: "入学测评",
+      owner: "前台老师",
+      course: englishClass.course || "五六年级小组课",
+      status: "意向",
+      className: "待分班",
+      hint: "英语试听样例会保留意向状态，后续可安排试听和跟进。"
+    },
+    enrolledPhysics: {
+      label: "高中物理已报名",
+      scenario: "enrolled",
+      name: "顾星然",
+      phone: "13900010003",
+      relation: "父亲",
+      grade: "高一年级",
+      school: "一中",
+      channel: "到店咨询",
+      owner: physicsClass.teacher || "前台老师",
+      course: physicsClass.course || "高一小组课/一对一",
+      status: "已报名",
+      className: "待分班",
+      hint: "高中物理已报名样例会直接进入分班和首次排课处理。"
+    },
+    classReadyMath: {
+      label: "已确定数学班",
+      scenario: "classReady",
+      name: "梁知夏",
+      phone: "13900010004",
+      relation: "母亲",
+      grade: "初三年级",
+      school: "实验中学",
+      channel: "老生续报",
+      owner: mathClass.teacher || "前台老师",
+      course: mathClass.course || "初三小组课/一对一",
+      status: "已报名",
+      className: mathClass.name || "待分班",
+      hint: "已确定班级样例会同步班级课程，保存后可直接进入排课。"
+    }
+  };
+}
+
+function studentSampleOptions(selectedValue = "custom") {
+  return Object.entries(studentSampleTemplates())
+    .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function studentSampleTemplate(key) {
+  return studentSampleTemplates()[key] || studentSampleTemplates().custom;
+}
+
 function ownerChoiceOptions(selectedValue = "前台老师") {
   return choiceOptions(
     [
@@ -846,6 +926,7 @@ function roomNoteOptions(selectedValue = "初中小班优先") {
 }
 
 function refreshStudentFormChoices() {
+  const sampleSelect = document.querySelector("#studentSampleSelect");
   const scenarioSelect = document.querySelector("#studentScenarioSelect");
   const relationSelect = document.querySelector("#studentRelationSelect");
   const gradeSelect = document.querySelector("#studentGradeSelect");
@@ -856,6 +937,7 @@ function refreshStudentFormChoices() {
   const statusSelect = document.querySelector("#studentStatusSelect");
   const classSelect = document.querySelector("#studentClassSelect");
   const defaults = studentScenarioDefaults(scenarioSelect?.value || "intent");
+  if (sampleSelect) sampleSelect.innerHTML = studentSampleOptions(sampleSelect.value || "custom");
   if (relationSelect) relationSelect.innerHTML = relationChoiceOptions(relationSelect.value || defaults.relation);
   if (gradeSelect) gradeSelect.innerHTML = gradeChoiceOptions(gradeSelect.value || defaults.grade);
   if (schoolSelect) schoolSelect.innerHTML = schoolChoiceOptions(schoolSelect.value || defaults.school);
@@ -867,7 +949,9 @@ function refreshStudentFormChoices() {
   refreshStudentScenarioHint();
 }
 
-function applyStudentScenario(scenario) {
+function applyStudentScenario(scenario, keepSample = false) {
+  const sampleSelect = document.querySelector("#studentSampleSelect");
+  if (!keepSample && sampleSelect) sampleSelect.value = "custom";
   const defaults = studentScenarioDefaults(scenario);
   const relationSelect = document.querySelector("#studentRelationSelect");
   const gradeSelect = document.querySelector("#studentGradeSelect");
@@ -889,10 +973,44 @@ function applyStudentScenario(scenario) {
   refreshStudentScenarioHint();
 }
 
+function setStudentChoice(select, builder, value) {
+  if (!select) return;
+  select.innerHTML = builder(value);
+  select.value = value;
+}
+
+function applyStudentSample(sampleKey) {
+  const sample = studentSampleTemplate(sampleKey);
+  if (!sample || sampleKey === "custom") {
+    refreshStudentScenarioHint();
+    return;
+  }
+  const scenarioSelect = document.querySelector("#studentScenarioSelect");
+  const nameInput = studentForm?.elements?.name;
+  const phoneInput = studentForm?.elements?.phone;
+  if (scenarioSelect) scenarioSelect.value = sample.scenario || "intent";
+  if (nameInput) nameInput.value = sample.name || "";
+  if (phoneInput) phoneInput.value = sample.phone || "";
+
+  setStudentChoice(document.querySelector("#studentRelationSelect"), relationChoiceOptions, sample.relation || "母亲");
+  setStudentChoice(document.querySelector("#studentGradeSelect"), gradeChoiceOptions, sample.grade || "初二年级");
+  setStudentChoice(document.querySelector("#studentSchoolSelect"), schoolChoiceOptions, sample.school || "暂未确定");
+  setStudentChoice(document.querySelector("#studentChannelSelect"), channelChoiceOptions, sample.channel || "转介绍");
+  setStudentChoice(document.querySelector("#studentOwnerSelect"), ownerChoiceOptions, sample.owner || "前台老师");
+  setStudentChoice(document.querySelector("#studentCourseSelect"), courseOptions, sample.course || "初二小组课/一对一");
+  setStudentChoice(document.querySelector("#studentStatusSelect"), studentStatusChoiceOptions, sample.status || "意向");
+  setStudentChoice(document.querySelector("#studentClassSelect"), studentClassChoiceOptions, sample.className || "待分班");
+
+  const hint = document.querySelector("#studentScenarioHint");
+  if (hint) hint.textContent = sample.hint || studentScenarioDefaults(sample.scenario || "intent").hint;
+}
+
 function syncStudentClassCourse() {
   const classSelect = document.querySelector("#studentClassSelect");
   const courseSelect = document.querySelector("#studentCourseSelect");
   const statusSelect = document.querySelector("#studentStatusSelect");
+  const sampleSelect = document.querySelector("#studentSampleSelect");
+  if (sampleSelect) sampleSelect.value = "custom";
   const classItem = getClass(classSelect?.value);
   if (classItem?.course && courseSelect) courseSelect.innerHTML = courseOptions(classItem.course);
   if (classItem && statusSelect) statusSelect.innerHTML = studentStatusChoiceOptions("已报名");
@@ -906,6 +1024,11 @@ function refreshStudentScenarioHint() {
   if (!hint) return;
   const defaults = studentScenarioDefaults(scenarioSelect?.value || "intent");
   const classItem = getClass(classSelect?.value);
+  const sampleSelect = document.querySelector("#studentSampleSelect");
+  if (sampleSelect?.value && sampleSelect.value !== "custom") {
+    hint.textContent = studentSampleTemplate(sampleSelect.value).hint || defaults.hint;
+    return;
+  }
   hint.textContent = classItem ? `已选择 ${classItem.name}，课程会自动带出为 ${classItem.course}，保存后可进入首次排课。` : defaults.hint;
 }
 
@@ -1858,6 +1981,10 @@ document.addEventListener("change", (event) => {
 
   if (event.target.id === "studentScenarioSelect") {
     applyStudentScenario(event.target.value);
+  }
+
+  if (event.target.id === "studentSampleSelect") {
+    applyStudentSample(event.target.value);
   }
 
   if (event.target.id === "studentClassSelect") {

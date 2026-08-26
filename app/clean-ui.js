@@ -56,7 +56,7 @@ function cleanUiDockAnchor(body, panels) {
   const firstPanel = panels[0];
   if (!firstPanel) return null;
   if (firstPanel.parentElement === body) return firstPanel;
-  return firstPanel.closest(".master-grid") || firstPanel;
+  return firstPanel.closest(".master-grid, .lead-layout, .follow-layout, .staff-layout") || firstPanel;
 }
 
 function cleanUiActionDock(panels) {

@@ -276,6 +276,37 @@ function followUpNoteOptions(selectedValue = "家长约定周五补缴") {
   );
 }
 
+function leadNoteOptions(selectedValue = "家长想先试听，关注价格和上课时间。") {
+  return choiceOptions(
+    [
+      "家长想先试听，关注价格和上课时间。",
+      "家长关注班型和上课时间，需电话回访。",
+      "同学家长介绍，建议优先安排测评。",
+      "家长比价中，需同步课程优势和优惠政策。",
+      "学生基础薄弱，建议先做入学测评。",
+      "高意向咨询，建议当天邀约试听。",
+      "暂未接通，明天继续联系。",
+      "其他招生备注，线下补充。"
+    ],
+    selectedValue
+  );
+}
+
+function leadTrialNoteOptions(selectedValue = "招生试听课，试听后回访报名意向") {
+  return choiceOptions(
+    [
+      "招生试听课，试听后回访报名意向",
+      "试听后确认适合班型和上课时间",
+      "试听后同步报价和优惠政策",
+      "试听后安排学习测评和分班建议",
+      "家长需试听后再决定是否报名",
+      "试听课后当天电话回访",
+      "其他试听备注，线下补充"
+    ],
+    selectedValue
+  );
+}
+
 function paymentAccountOptions(selectedValue = "校区收款账户") {
   return choiceOptions(["校区收款账户", "对公账户", "微信收款码", "支付宝收款码", "现金账户", "其他账户"], selectedValue);
 }

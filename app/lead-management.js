@@ -227,7 +227,7 @@ function renderLeadForm() {
         <label>意向度<select name="intention">${leadIntentions.map((item) => `<option>${escapeHtml(item)}</option>`).join("")}</select></label>
         <label>下次跟进<input name="nextFollowUp" type="date" value="${leadDateOffset(1)}" required /></label>
       </div>
-      <label class="stack-item">备注<input name="note" placeholder="例如 家长想先试听，关注价格和上课时间。" /></label>
+      <label class="stack-item">备注<select name="note">${typeof leadNoteOptions === "function" ? leadNoteOptions("家长想先试听，关注价格和上课时间。") : "<option>家长想先试听，关注价格和上课时间。</option>"}</select></label>
       <button class="primary-action" type="submit">保存线索</button>
     </form>`;
 }
@@ -330,7 +330,7 @@ function renderLeadTrialDialog(id) {
         <label>试听老师<select name="teacher" required>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(leadTrialTeacherValue(lead)) : `<option>${escapeHtml(leadTrialTeacherValue(lead))}</option>`}</select></label>
         <label>教室<select name="room" required>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(leadTrialRoomValue(lead)) : `<option>${escapeHtml(leadTrialRoomValue(lead))}</option>`}</select></label>
       </div>
-      <label class="stack-item">备注<input name="note" value="招生试听课，试听后回访报名意向" /></label>
+      <label class="stack-item">备注<select name="note">${typeof leadTrialNoteOptions === "function" ? leadTrialNoteOptions("招生试听课，试听后回访报名意向") : "<option>招生试听课，试听后回访报名意向</option>"}</select></label>
       <div class="dialog-actions">
         <button value="cancel" type="submit">取消</button>
         <button class="primary-action" value="default" type="submit">保存试听</button>

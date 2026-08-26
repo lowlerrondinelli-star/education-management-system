@@ -35,6 +35,57 @@ function nextIsoDate(value, days = 7) {
   return date.toISOString().slice(0, 10);
 }
 
+function nextScheduleWeekday(value, weekday) {
+  const date = new Date(`${value}T00:00:00`);
+  if (!Number.isFinite(date.getTime())) return nextIsoDate(value, 7);
+  const offset = (weekday - date.getDay() + 7) % 7 || 7;
+  date.setDate(date.getDate() + offset);
+  return date.toISOString().slice(0, 10);
+}
+
+function scheduleAdjustmentPlanPresets(lesson, kind) {
+  const time = splitLessonTime(lesson);
+  const sameTime = lesson.time || `${time.start}-${time.end}`;
+  const presets = {
+    reschedule: {
+      tomorrowSameTime: { label: "明天原时间", date: nextIsoDate(lesson.date, 1), time: sameTime, reason: "家长要求改期" },
+      saturdayMorning: { label: "最近周六上午", date: nextScheduleWeekday(lesson.date, 6), time: "08:30-10:00", reason: "节假日/校区活动调整" },
+      nextMondayEvening: { label: "下周一晚一", date: nextScheduleWeekday(lesson.date, 1), time: "18:30-20:00", reason: "老师时间冲突，调整课节" },
+      onlineSameTime: { label: "改线上同时间", date: lesson.date, time: sameTime, room: "线上课程", reason: "教室冲突，调整上课地点" }
+    },
+    makeup: {
+      nextWeekSameTime: { label: "下周同时间补课", date: nextIsoDate(lesson.date, 7), time: sameTime, reason: "补课安排" },
+      saturdayAfternoon: { label: "最近周六下午补课", date: nextScheduleWeekday(lesson.date, 6), time: "13:30-15:00", reason: "补课安排" },
+      oneToOneEvening: { label: "晚间一对一补课", date: nextIsoDate(lesson.date, 3), time: "17:00-18:00", room: "试听教室", reason: "安排补课" },
+      onlineMakeup: { label: "线上补课", date: nextIsoDate(lesson.date, 7), time: sameTime, room: "线上课程", reason: "补课安排" }
+    }
+  };
+  return presets[kind] || presets.reschedule;
+}
+
+function scheduleAdjustmentPlanOptions(lesson, kind, selectedValue) {
+  return Object.entries(scheduleAdjustmentPlanPresets(lesson, kind))
+    .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function applyScheduleAdjustmentPlan(form, lesson, kind) {
+  if (!form || !lesson) return;
+  const plan = scheduleAdjustmentPlanPresets(lesson, kind)[form.elements.adjustPlan?.value];
+  if (!plan) return;
+  const [start, end] = text(plan.time).split("-").map((part) => part.trim());
+  if (form.elements.date) form.elements.date.value = plan.date;
+  if (form.elements.timeSlot) form.elements.timeSlot.value = plan.time;
+  if (form.elements.startTime) form.elements.startTime.value = start || "18:30";
+  if (form.elements.endTime) form.elements.endTime.value = end || "20:00";
+  if (plan.room && form.elements.room) {
+    form.elements.room.innerHTML = typeof roomChoiceOptions === "function" ? roomChoiceOptions(plan.room) : `<option>${escapeHtml(plan.room)}</option>`;
+  }
+  if (plan.reason && form.elements.reason) {
+    form.elements.reason.innerHTML = typeof scheduleReasonOptions === "function" ? scheduleReasonOptions(kind, plan.reason) : `<option>${escapeHtml(plan.reason)}</option>`;
+  }
+}
+
 function lessonSnapshot(lesson) {
   return ["id", "date", "day", "time", "type", "target", "subject", "teacher", "room", "status"].reduce((row, key) => {
     row[key] = lesson[key] || "";
@@ -116,7 +167,11 @@ function renderScheduleAdjustmentDialog(kind, lessonId) {
   const [title, help] = titles[kind] || titles.reschedule;
   const isCancel = kind === "cancel";
   const time = splitLessonTime(lesson);
-  const date = kind === "makeup" ? nextIsoDate(lesson.date) : lesson.date;
+  const defaultPlanKey = kind === "makeup" ? "nextWeekSameTime" : "tomorrowSameTime";
+  const defaultPlan = isCancel ? null : scheduleAdjustmentPlanPresets(lesson, kind)[defaultPlanKey];
+  const defaultTime = defaultPlan?.time || lesson.time || `${time.start}-${time.end}`;
+  const [defaultStart = time.start, defaultEnd = time.end] = defaultTime.split("-").map((part) => part.trim());
+  const date = isCancel ? lesson.date : defaultPlan?.date || (kind === "makeup" ? nextIsoDate(lesson.date) : lesson.date);
   scheduleAdjustDialog.innerHTML = `
     <form method="dialog" id="scheduleAdjustForm" data-kind="${escapeHtml(kind)}" data-lesson-id="${escapeHtml(lesson.id)}">
       <div class="dialog-head">
@@ -124,16 +179,17 @@ function renderScheduleAdjustmentDialog(kind, lessonId) {
         <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
       </div>
       <div class="form-grid">
+        ${isCancel ? "" : `<label>处理方案模板<select name="adjustPlan">${scheduleAdjustmentPlanOptions(lesson, kind, defaultPlanKey)}</select></label>`}
         <label>上课日期<input name="date" type="date" value="${escapeHtml(date)}" ${isCancel ? "disabled" : "required"} /></label>
-        <label>上课时间段<select name="timeSlot" ${isCancel ? "disabled" : ""}>${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions(lesson.time || "18:30-20:00") : "<option value=\"18:30-20:00\">晚一 18:30-20:00</option>"}</select></label>
-        <label>开始时间<input name="startTime" type="time" value="${escapeHtml(time.start)}" ${isCancel ? "disabled" : "required"} /></label>
-        <label>结束时间<input name="endTime" type="time" value="${escapeHtml(time.end)}" ${isCancel ? "disabled" : "required"} /></label>
+        <label>上课时间段<select name="timeSlot" ${isCancel ? "disabled" : ""}>${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions(defaultTime) : "<option value=\"18:30-20:00\">晚一 18:30-20:00</option>"}</select></label>
+        <label>开始时间<input name="startTime" type="time" value="${escapeHtml(defaultStart)}" ${isCancel ? "disabled" : "required"} /></label>
+        <label>结束时间<input name="endTime" type="time" value="${escapeHtml(defaultEnd)}" ${isCancel ? "disabled" : "required"} /></label>
         <label>上课教师<select name="teacher" ${isCancel ? "disabled" : "required"}>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(lesson.teacher) : `<option>${escapeHtml(lesson.teacher)}</option>`}</select></label>
-        <label>上课教室<select name="room" ${isCancel ? "disabled" : "required"}>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(lesson.room) : `<option>${escapeHtml(lesson.room)}</option>`}</select></label>
+        <label>上课教室<select name="room" ${isCancel ? "disabled" : "required"}>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(defaultPlan?.room || lesson.room) : `<option>${escapeHtml(defaultPlan?.room || lesson.room)}</option>`}</select></label>
         <label>操作人<select name="operator" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions("前台老师") : "<option>前台老师</option>"}</select></label>
       </div>
       <div class="form-grid" style="grid-template-columns:1fr;">
-        <label>原因/备注<select name="reason" required>${typeof scheduleReasonOptions === "function" ? scheduleReasonOptions(kind, isCancel ? "学生请假或老师临时调整" : "") : `<option>${escapeHtml(isCancel ? "学生请假或老师临时调整" : "临时调整")}</option>`}</select></label>
+        <label>原因/备注<select name="reason" required>${typeof scheduleReasonOptions === "function" ? scheduleReasonOptions(kind, isCancel ? "学生请假或老师临时调整" : defaultPlan?.reason || "") : `<option>${escapeHtml(isCancel ? "学生请假或老师临时调整" : defaultPlan?.reason || "临时调整")}</option>`}</select></label>
       </div>
       <div class="dialog-actions"><span class="muted">${escapeHtml(help)}</span><button value="cancel" type="submit">取消</button><button class="primary-action" value="default" type="submit">保存</button></div>
     </form>`;
@@ -310,6 +366,13 @@ document.addEventListener("submit", (event) => {
   if (event.submitter?.value === "cancel") return;
   event.preventDefault();
   saveScheduleAdjustment(event.target);
+});
+
+document.addEventListener("change", (event) => {
+  if (event.target.name !== "adjustPlan" || !event.target.closest("#scheduleAdjustForm")) return;
+  const form = event.target.form;
+  const lesson = appState.lessons.find((item) => item.id === form.dataset.lessonId);
+  applyScheduleAdjustmentPlan(form, lesson, form.dataset.kind);
 });
 
 ensureScheduleAdjustmentData();

@@ -35,6 +35,13 @@ classAdvisorStyle.textContent = `
     overflow-wrap: anywhere;
   }
 
+  .class-advisor-scenario-note {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+    max-width: 560px;
+  }
+
   .class-advisor-score {
     display: grid;
     gap: 6px;
@@ -75,6 +82,75 @@ document.head.appendChild(classAdvisorStyle);
 let classAdvisorStatusFilter = "all";
 let classAdvisorRiskFilter = "all";
 let classAdvisorSortMode = "score";
+let classAdvisorScenario = "dailyReview";
+
+function classAdvisorScenarioPresets() {
+  return {
+    dailyReview: {
+      label: "日常分班总览",
+      status: "all",
+      risk: "all",
+      sort: "score",
+      note: "显示所有可处理建议，按匹配度从高到低核对。"
+    },
+    newEnrollment: {
+      label: "新报名优先分班",
+      status: "recommended",
+      risk: "unassigned",
+      sort: "score",
+      note: "优先看已报名但仍待分班、且系统判断适合直接分入的学员。"
+    },
+    riskReview: {
+      label: "风险复核优先",
+      status: "risk",
+      risk: "all",
+      sort: "risk",
+      note: "先处理课程不一致、课时不足、班级已满等不适合直接分班的记录。"
+    },
+    courseAudit: {
+      label: "课程匹配核对",
+      status: "all",
+      risk: "courseMismatch",
+      sort: "risk",
+      note: "集中核对学员报读课程和班级课程不一致的情况。"
+    },
+    capacityFirst: {
+      label: "容量宽松优先",
+      status: "all",
+      risk: "all",
+      sort: "openSeats",
+      note: "按剩余名额排序，适合招生高峰期快速找可接收班级。"
+    },
+    orderClassAudit: {
+      label: "订单班级复核",
+      status: "all",
+      risk: "orderClass",
+      sort: "risk",
+      note: "集中处理学员档案班级和订单班级不一致的问题。"
+    },
+    custom: {
+      label: "手动筛选",
+      status: "all",
+      risk: "all",
+      sort: "score",
+      note: "当前由教务手动组合建议状态、卡点和排序条件。"
+    }
+  };
+}
+
+function classAdvisorScenarioOptions(selectedValue = "dailyReview") {
+  return Object.entries(classAdvisorScenarioPresets())
+    .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function applyClassAdvisorScenario(scenarioKey) {
+  const preset = classAdvisorScenarioPresets()[scenarioKey] || classAdvisorScenarioPresets().dailyReview;
+  classAdvisorScenario = scenarioKey;
+  classAdvisorStatusFilter = preset.status;
+  classAdvisorRiskFilter = preset.risk;
+  classAdvisorSortMode = preset.sort;
+}
 
 function classAdvisorStudentOrders(student) {
   return appState.orders.filter((order) => order.student === student.name && order.status !== "已作废");
@@ -256,8 +332,12 @@ function renderClassAdvisorSummary(rows, visibleRows) {
 }
 
 function renderClassAdvisorToolbar() {
+  const scenario = classAdvisorScenarioPresets()[classAdvisorScenario] || classAdvisorScenarioPresets().dailyReview;
   return `
     <div class="filters class-advisor-toolbar">
+      <label>分班场景
+        <select id="classAdvisorScenario" aria-label="智能分班场景模板">${classAdvisorScenarioOptions(classAdvisorScenario)}</select>
+      </label>
       <label>建议状态
         <select id="classAdvisorStatusFilter" aria-label="智能分班建议状态筛选">
           <option value="all" ${classAdvisorStatusFilter === "all" ? "selected" : ""}>全部建议</option>
@@ -287,7 +367,8 @@ function renderClassAdvisorToolbar() {
           <option value="class" ${classAdvisorSortMode === "class" ? "selected" : ""}>班级名称</option>
         </select>
       </label>
-    </div>`;
+    </div>
+    <div class="class-advisor-scenario-note">${escapeHtml(scenario.note)}</div>`;
 }
 
 function renderClassAdvisorScore(row) {
@@ -460,9 +541,16 @@ if (typeof renderDataCenter === "function") {
 }
 
 document.addEventListener("change", (event) => {
+  if (event.target.id === "classAdvisorScenario") {
+    applyClassAdvisorScenario(event.target.value);
+    if (currentView === "classes") renderView();
+    return;
+  }
+
   if (event.target.id === "classAdvisorStatusFilter") classAdvisorStatusFilter = event.target.value;
   if (event.target.id === "classAdvisorRiskFilter") classAdvisorRiskFilter = event.target.value;
   if (event.target.id === "classAdvisorSortMode") classAdvisorSortMode = event.target.value;
+  if (["classAdvisorStatusFilter", "classAdvisorRiskFilter", "classAdvisorSortMode"].includes(event.target.id)) classAdvisorScenario = "custom";
 
   if (["classAdvisorStatusFilter", "classAdvisorRiskFilter", "classAdvisorSortMode"].includes(event.target.id) && currentView === "classes") {
     renderView();

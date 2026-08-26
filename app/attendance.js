@@ -150,6 +150,40 @@ function updateAttendanceDraftSummary(form) {
   if (target) target.innerHTML = renderAttendanceDraftSummary(attendanceDraftCounts(form));
 }
 
+function attendanceScenarioOptions(selectedValue = "normal") {
+  const scenarios = [
+    ["normal", "常规上课：全部到课"],
+    ["oneLate", "有一人迟到"],
+    ["oneLeave", "有一人请假"],
+    ["oneAbsent", "有一人旷课"],
+    ["riskLeave", "欠费/零课时学员先请假"]
+  ];
+  return scenarios.map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(label)}</option>`).join("");
+}
+
+function attendanceSelectStudent(select) {
+  const studentId = text(select.name).replace(/^status:/, "");
+  return appState.students.find((student) => student.id === studentId);
+}
+
+function applyAttendanceScenario(form, scenario) {
+  if (!form) return;
+  const selects = [...form.querySelectorAll('select[name^="status:"]')];
+  selects.forEach((select) => {
+    select.value = "到课";
+  });
+  if (scenario === "oneLate" && selects[0]) selects[0].value = "迟到";
+  if (scenario === "oneLeave" && selects[0]) selects[0].value = "请假";
+  if (scenario === "oneAbsent" && selects[0]) selects[0].value = "旷课";
+  if (scenario === "riskLeave") {
+    selects.forEach((select) => {
+      const student = attendanceSelectStudent(select);
+      if (Number(student?.debt || 0) > 0 || Number(student?.balance || 0) <= 0) select.value = "请假";
+    });
+  }
+  updateAttendanceDraftSummary(form);
+}
+
 const baseRenderScheduleForAttendance = renderSchedule;
 renderSchedule = function renderScheduleWithAttendance() {
   const days = ["周一", "周二", "周三", "周四", "周五"];
@@ -213,6 +247,7 @@ function renderAttendanceDialog(lessonId) {
         <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
       </div>
       <div class="attendance-quickbar">
+        <label>点名场景模板<select name="attendanceScenario">${attendanceScenarioOptions("normal")}</select></label>
         <div class="attendance-actions">
           <button class="small-button" type="button" data-attendance-bulk="到课">全部到课</button>
           <button class="small-button" type="button" data-attendance-bulk="迟到">全部迟到</button>
@@ -321,6 +356,11 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  if (event.target.name === "attendanceScenario" && event.target.closest("#attendanceForm")) {
+    applyAttendanceScenario(event.target.form, event.target.value);
+    return;
+  }
+
   if (!event.target.matches('select[name^="status:"]')) return;
   const form = event.target.closest("#attendanceForm");
   if (form) updateAttendanceDraftSummary(form);

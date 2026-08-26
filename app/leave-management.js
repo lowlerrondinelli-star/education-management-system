@@ -197,6 +197,110 @@ function applyLeaveScenario(form, scenario) {
   }
 }
 
+function leaveMakeupBaseDate(item, sourceLesson = {}) {
+  return item?.lessonDate || sourceLesson.date || (typeof todayIsoDate === "function" ? todayIsoDate() : new Date().toISOString().slice(0, 10));
+}
+
+function nextLeaveWeekday(value, weekday) {
+  const date = new Date(`${value}T00:00:00`);
+  if (!Number.isFinite(date.getTime())) return leaveIsoDateAfter(value, 7);
+  const offset = (weekday - date.getDay() + 7) % 7 || 7;
+  date.setDate(date.getDate() + offset);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function leaveMakeupTimeSlotValue(time) {
+  if (typeof lessonSlotValueFromRange === "function") return lessonSlotValueFromRange(time) || "custom";
+  return text(time).includes("-") ? time : "18:30-20:00";
+}
+
+function leaveMakeupArrangementPresets(item, sourceLesson = {}) {
+  const baseDate = leaveMakeupBaseDate(item, sourceLesson);
+  const sameTime = text(sourceLesson.time || item?.lessonTime || "18:30-20:00").trim() || "18:30-20:00";
+  const teacher = item?.teacher || sourceLesson.teacher || "前台老师";
+  const room = item?.room || sourceLesson.room || "试听教室";
+  const onlineRoom = (appState.rooms || []).some((row) => row.name === "线上课程") ? "线上课程" : room;
+  return {
+    nextWeekSameTime: {
+      label: "下周同时间",
+      date: leaveIsoDateAfter(baseDate, 7),
+      time: sameTime,
+      teacher,
+      room,
+      hint: "适合普通请假补课，沿用原课节老师、教室和时间段。"
+    },
+    saturdayAfternoon: {
+      label: "最近周六下午",
+      date: nextLeaveWeekday(baseDate, 6),
+      time: "13:30-15:00",
+      teacher,
+      room,
+      hint: "适合家长周末有空的补课，自动安排到最近周六下午一。"
+    },
+    oneToOneEvening: {
+      label: "晚间一对一",
+      date: leaveIsoDateAfter(baseDate, 3),
+      time: "17:00-18:00",
+      teacher,
+      room: "试听教室",
+      hint: "适合单独补齐缺课内容，默认使用一对一晚间短课。"
+    },
+    onlineSameTime: {
+      label: "线上同时间",
+      date: leaveIsoDateAfter(baseDate, 7),
+      time: sameTime,
+      teacher,
+      room: onlineRoom,
+      hint: "适合无法到校的学员，保留原时间并优先安排线上课程。"
+    },
+    teacherGap: {
+      label: "老师空档补课",
+      date: leaveIsoDateAfter(baseDate, 2),
+      time: "15:10-16:40",
+      teacher,
+      room,
+      hint: "适合教务先占老师近两天可用空档，后续可再微调。"
+    }
+  };
+}
+
+function leaveMakeupArrangementOptions(item, sourceLesson = {}, selectedValue = "nextWeekSameTime") {
+  return Object.entries(leaveMakeupArrangementPresets(item, sourceLesson))
+    .map(([value, plan]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(plan.label)}</option>`)
+    .join("");
+}
+
+function setLeaveChoiceField(field, value, optionsBuilder) {
+  if (typeof setChoiceField === "function") {
+    setChoiceField(field, value, optionsBuilder);
+    return;
+  }
+  if (!field) return;
+  if (field.tagName === "SELECT" && typeof optionsBuilder === "function") field.innerHTML = optionsBuilder(value);
+  field.value = value;
+}
+
+function applyLeaveMakeupArrangement(form) {
+  if (!form) return;
+  const item = leaveForRow(form.dataset.leaveId);
+  if (!item) return;
+  const sourceLesson = appState.lessons.find((lesson) => lesson.id === item.lessonId) || {};
+  const plan = leaveMakeupArrangementPresets(item, sourceLesson)[form.elements.leaveMakeupArrangement?.value];
+  if (!plan) return;
+  const time = splitLessonTime({ time: plan.time });
+  if (form.elements.date) form.elements.date.value = plan.date;
+  setLeaveChoiceField(form.elements.timeSlot, leaveMakeupTimeSlotValue(plan.time), typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions : null);
+  if (form.elements.startTime) form.elements.startTime.value = time.start;
+  if (form.elements.endTime) form.elements.endTime.value = time.end;
+  setLeaveChoiceField(form.elements.teacher, plan.teacher, typeof teacherChoiceOptions === "function" ? teacherChoiceOptions : null);
+  setLeaveChoiceField(form.elements.room, plan.room, typeof roomChoiceOptions === "function" ? roomChoiceOptions : null);
+  const hint = form.querySelector("[data-leave-makeup-arrangement-hint]");
+  if (hint) hint.textContent = plan.hint;
+}
+
 function leaveForRow(id) {
   ensureLeaveData();
   return appState.leaveRequests.find((item) => item.id === id);
@@ -403,8 +507,9 @@ function renderLeaveMakeupDialog(id) {
   const item = leaveForRow(id);
   if (!item) return;
   const sourceLesson = appState.lessons.find((lesson) => lesson.id === item.lessonId) || {};
-  const date = nextIsoDate(item.lessonDate || sourceLesson.date || new Date().toISOString().slice(0, 10));
-  const time = splitLessonTime(sourceLesson);
+  const defaultArrangement = "nextWeekSameTime";
+  const plan = leaveMakeupArrangementPresets(item, sourceLesson)[defaultArrangement];
+  const time = splitLessonTime({ time: plan.time });
   leaveDialog.innerHTML = `
     <form method="dialog" id="leaveMakeupForm" data-leave-id="${escapeHtml(item.id)}">
       <div class="dialog-head">
@@ -416,13 +521,15 @@ function renderLeaveMakeupDialog(id) {
         <button class="icon-button" value="cancel" aria-label="关闭" type="submit">×</button>
       </div>
       <div class="form-grid">
-        <label>补课日期<input name="date" type="date" value="${escapeHtml(date)}" required /></label>
-        <label>补课时间段<select name="timeSlot">${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions(sourceLesson.time || "18:30-20:00") : "<option value=\"18:30-20:00\">晚一 18:30-20:00</option>"}</select></label>
+        <label>补课安排模板<select name="leaveMakeupArrangement">${leaveMakeupArrangementOptions(item, sourceLesson, defaultArrangement)}</select></label>
+        <label>补课日期<input name="date" type="date" value="${escapeHtml(plan.date)}" required /></label>
+        <label>补课时间段<select name="timeSlot">${typeof lessonTimeSlotOptions === "function" ? lessonTimeSlotOptions(leaveMakeupTimeSlotValue(plan.time)) : "<option value=\"18:30-20:00\">晚一 18:30-20:00</option>"}</select></label>
         <label>开始时间<input name="startTime" type="time" value="${escapeHtml(time.start)}" required /></label>
         <label>结束时间<input name="endTime" type="time" value="${escapeHtml(time.end)}" required /></label>
-        <label>上课教师<select name="teacher" required>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(item.teacher || sourceLesson.teacher || "前台老师") : `<option>${escapeHtml(item.teacher || sourceLesson.teacher || "前台老师")}</option>`}</select></label>
-        <label>上课教室<select name="room" required>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(item.room || sourceLesson.room || "试听教室") : `<option>${escapeHtml(item.room || sourceLesson.room || "试听教室")}</option>`}</select></label>
+        <label>上课教师<select name="teacher" required>${typeof teacherChoiceOptions === "function" ? teacherChoiceOptions(plan.teacher) : `<option>${escapeHtml(plan.teacher)}</option>`}</select></label>
+        <label>上课教室<select name="room" required>${typeof roomChoiceOptions === "function" ? roomChoiceOptions(plan.room) : `<option>${escapeHtml(plan.room)}</option>`}</select></label>
         <label>操作人<select name="operator" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions(item.operator || "前台老师") : `<option>${escapeHtml(item.operator || "前台老师")}</option>`}</select></label>
+        <span class="form-wide muted" data-leave-makeup-arrangement-hint>${escapeHtml(plan.hint)}</span>
       </div>
       <div class="dialog-actions">
         <span class="muted">会生成一节 1 对 1 补课课节，后续可正常点名和确认上课。</span>
@@ -697,6 +804,10 @@ document.addEventListener("change", (event) => {
 
   if (event.target.name === "lessonId" && event.target.closest("#leaveRequestForm")) {
     syncLeaveLessonStudents(event.target.form);
+  }
+
+  if (event.target.name === "leaveMakeupArrangement" && event.target.closest("#leaveMakeupForm")) {
+    applyLeaveMakeupArrangement(event.target.form);
   }
 });
 

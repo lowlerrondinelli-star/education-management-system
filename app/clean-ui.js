@@ -23,7 +23,16 @@ const cleanUiSupportPanelMeta = {
     { key: "signin", selector: ".lesson-signin-panel", label: "课前签到", hint: "查看到课和资金风险" },
     { key: "resource", selector: ".schedule-resource-panel", label: "资源占用", hint: "查看老师和教室占用" },
     { key: "list", selector: ".schedule-list-panel", label: "课表清单", hint: "按条件筛选全部课节" }
+  ],
+  students: [
+    { key: "enrollment", selector: ".enrollment-workbench", label: "报名办理", hint: "查看报名分班排课卡点" },
+    { key: "operations", selector: ".student-ops-panel", label: "运营看板", hint: "查看欠费续费分班动作" }
   ]
+};
+
+const cleanUiSupportGroupMeta = {
+  schedule: { title: "课表辅助" },
+  students: { title: "学员辅助" }
 };
 
 function cleanUiViewKey() {
@@ -129,6 +138,7 @@ function cleanUiSupportPanelKey(item) {
 
 function cleanUiSupportDock(items) {
   const activeKey = cleanUiActiveSupportPanels[cleanUiViewKey()] || "";
+  const group = cleanUiSupportGroupMeta[cleanUiViewKey()] || { title: "辅助面板" };
   const buttons = items
     .map((item) => {
       const key = cleanUiSupportPanelKey(item);
@@ -144,13 +154,20 @@ function cleanUiSupportDock(items) {
     <div class="clean-support-group">
       <div class="clean-action-title">
         <span class="clean-action-kicker">查看面板</span>
-        <strong>课表辅助</strong>
+        <strong>${escapeHtml(group.title)}</strong>
         <span class="muted">${activeKey ? "正在查看辅助面板。" : `已收起 ${items.length} 个辅助面板。`}</span>
       </div>
       <div class="clean-action-buttons">
         ${buttons}
         ${closeButton}
       </div>
+    </div>`;
+}
+
+function cleanUiSupportOnlyDock(items) {
+  return `
+    <div class="clean-action-dock clean-support-only">
+      ${cleanUiSupportDock(items)}
     </div>`;
 }
 
@@ -191,6 +208,14 @@ function decorateCleanUiSupportPanels() {
   const dock = appContent.querySelector(".clean-action-dock");
   if (dock && !dock.querySelector(".clean-support-group")) {
     dock.insertAdjacentHTML("beforeend", cleanUiSupportDock(items));
+    return;
+  }
+
+  const primaryBody = [...appContent.querySelectorAll(".section:not([data-clean-support-panel]) .section-body")]
+    .find((body) => !body.querySelector(".clean-action-dock"));
+  if (primaryBody) {
+    primaryBody.classList.add("clean-ui-managed");
+    primaryBody.insertAdjacentHTML("afterbegin", cleanUiSupportOnlyDock(items));
   }
 }
 

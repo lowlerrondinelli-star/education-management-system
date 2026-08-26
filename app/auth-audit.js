@@ -3,7 +3,7 @@ const authSessionKey = `${storageKey}-current-user`;
 const authRoleDefaults = {
   "校长/管理员": () => navItems.map((item) => item.id),
   "前台/招生顾问": () => ["dashboard", "leads", "students", "orders", "classes", "followUp", "data", "templates"],
-  "教务/学管师": () => ["dashboard", "teacherDesk", "leads", "students", "classes", "schedule", "leaves", "consume", "feedback", "masters", "data"],
+  "教务/学管师": () => ["dashboard", "teacherDesk", "leads", "students", "classes", "schedule", "leaves", "consume", "feedback", "followUp", "masters", "data"],
   "教师": () => ["dashboard", "teacherDesk", "schedule", "leaves", "consume", "feedback"],
   "财务/收银": () => ["dashboard", "orders", "consume", "reports", "data"]
 };
@@ -36,9 +36,10 @@ const authClickPolicies = [
   ["[data-lead-status], [data-lead-trial], [data-lead-convert], [data-lead-lost]", "leads", "招生线索"],
   ["[data-student-order], [data-pay-order], [data-finance-adjust]", "orders", "订单/收款"],
   ["[data-student-class]", "classes", "分班"],
-  ["[data-finish-lesson], [data-schedule-adjust]", "schedule", "排课/上课"],
+  ["[data-student-follow]", "followUp", "续费跟进"],
+  ["[data-attendance-lesson], [data-finish-lesson], [data-schedule-adjust]", "schedule", "排课/上课"],
   ["[data-feedback-lesson]", "feedback", "课后反馈"],
-  ["[data-schedule-leave], [data-leave-approve], [data-leave-reject], [data-leave-makeup], [data-leave-complete]", "leaves", "请假补课"],
+  ["[data-schedule-leave], [data-lesson-leave], [data-leave-approve], [data-leave-reject], [data-leave-makeup], [data-leave-complete]", "leaves", "请假补课"],
   ["[data-export], #backupData, #restoreData, #resetDemo", "data", "数据导入导出"]
 ];
 

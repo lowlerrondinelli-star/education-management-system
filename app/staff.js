@@ -1,13 +1,19 @@
 const roleModules = [
   ["dashboard", "运营总览"],
+  ["teacherDesk", "老师工作台"],
+  ["leads", "招生线索"],
   ["students", "学员档案"],
   ["orders", "订单课时"],
   ["classes", "班级分班"],
   ["schedule", "排课课表"],
+  ["leaves", "请假补课"],
   ["attendance", "点名消课"],
   ["consume", "课时流水"],
   ["feedback", "课后反馈"],
+  ["followUp", "续费跟进"],
+  ["reports", "经营报表"],
   ["masters", "基础资料"],
+  ["staff", "员工权限"],
   ["data", "数据中心"],
   ["templates", "模板字段库"]
 ];
@@ -16,31 +22,31 @@ const defaultRoles = [
   {
     name: "校长/管理员",
     description: "查看和维护全部业务数据",
-    permissions: ["dashboard", "students", "orders", "classes", "schedule", "attendance", "consume", "feedback", "masters", "data", "templates"],
+    permissions: ["dashboard", "teacherDesk", "leads", "students", "orders", "classes", "schedule", "leaves", "attendance", "consume", "feedback", "followUp", "reports", "masters", "staff", "data", "templates"],
     actions: "查看、新增、编辑、导入、导出"
   },
   {
     name: "前台/招生顾问",
     description: "负责建档、报名、收款和分班",
-    permissions: ["dashboard", "students", "orders", "classes", "data", "templates"],
-    actions: "查看、新增、报名、收款、导入"
+    permissions: ["dashboard", "leads", "students", "orders", "classes", "followUp", "data", "templates"],
+    actions: "查看、新增、报名、收款、跟进、导入"
   },
   {
     name: "教务/学管师",
-    description: "负责分班、排课、点名和课消核对",
-    permissions: ["dashboard", "students", "classes", "schedule", "attendance", "consume", "feedback", "masters", "data"],
-    actions: "查看、分班、排课、点名、消课、反馈"
+    description: "负责分班、排课、请假补课、点名和续费跟进",
+    permissions: ["dashboard", "teacherDesk", "leads", "students", "classes", "schedule", "leaves", "attendance", "consume", "feedback", "followUp", "masters", "data"],
+    actions: "查看、分班、排课、请假、点名、消课、反馈、跟进"
   },
   {
     name: "教师",
     description: "查看课表，完成点名、上课确认和课后反馈",
-    permissions: ["dashboard", "schedule", "attendance", "consume", "feedback"],
+    permissions: ["dashboard", "teacherDesk", "schedule", "leaves", "attendance", "consume", "feedback"],
     actions: "查看课表、点名、确认上课、课后反馈"
   },
   {
     name: "财务/收银",
     description: "核对订单、欠费、收款流水和导出报表",
-    permissions: ["dashboard", "orders", "consume", "data"],
+    permissions: ["dashboard", "orders", "consume", "reports", "data"],
     actions: "查看、收款、导出"
   }
 ];
@@ -276,36 +282,36 @@ function roleCreateTemplatePresets() {
     academicLead: {
       label: "分校教务主管",
       name: "分校教务主管",
-      description: "负责分校分班、排课、点名和课消复核",
-      permissions: ["dashboard", "students", "classes", "schedule", "attendance", "consume", "feedback", "masters", "data"],
-      actions: "查看、分班、排课、点名、消课、反馈、导出"
+      description: "负责分校分班、排课、请假补课、点名和续费跟进",
+      permissions: ["dashboard", "teacherDesk", "leads", "students", "classes", "schedule", "leaves", "attendance", "consume", "feedback", "followUp", "masters", "data"],
+      actions: "查看、分班、排课、请假、点名、消课、反馈、跟进、导出"
     },
     frontDeskLead: {
       label: "招生前台主管",
       name: "招生前台主管",
       description: "负责线索、建档、报名、收款和导入核对",
-      permissions: ["dashboard", "students", "orders", "classes", "data", "templates"],
+      permissions: ["dashboard", "leads", "students", "orders", "classes", "followUp", "data", "templates"],
       actions: "查看、新增、报名、收款、导入、导出"
     },
     partTimeTeacher: {
       label: "兼职教师",
       name: "兼职教师",
       description: "只查看本人课表并完成点名和课后反馈",
-      permissions: ["dashboard", "schedule", "attendance", "feedback"],
+      permissions: ["dashboard", "teacherDesk", "schedule", "leaves", "attendance", "feedback"],
       actions: "查看课表、点名、课后反馈"
     },
     financeReviewer: {
       label: "财务复核员",
       name: "财务复核员",
       description: "核对订单、欠费、收款流水和财务异常",
-      permissions: ["dashboard", "orders", "consume", "data"],
+      permissions: ["dashboard", "orders", "consume", "reports", "data"],
       actions: "查看、收款、审核、导出"
     },
     campusPrincipal: {
       label: "分校校长",
       name: "分校校长",
       description: "查看分校全量运营数据并处理关键审批",
-      permissions: ["dashboard", "students", "orders", "classes", "schedule", "attendance", "consume", "feedback", "masters", "data", "templates"],
+      permissions: ["dashboard", "teacherDesk", "leads", "students", "orders", "classes", "schedule", "leaves", "attendance", "consume", "feedback", "followUp", "reports", "masters", "staff", "data", "templates"],
       actions: "查看、新增、编辑、审核、导入、导出"
     }
   };

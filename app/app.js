@@ -337,6 +337,59 @@ function financeReasonOptions(kind = "refund", selectedValue = "") {
   );
 }
 
+function employeeDepartmentOptions(selectedValue = "教务部") {
+  return choiceOptions(
+    [
+      "教务部",
+      "教学部",
+      "招生前台",
+      "财务部",
+      "校区管理",
+      "市场部",
+      "校长室",
+      ...(appState.employees || []).map((item) => item.department)
+    ],
+    selectedValue
+  );
+}
+
+function staffSubjectOptions(selectedValue = "数学") {
+  return choiceOptions(
+    [
+      "数学",
+      "语文",
+      "英语",
+      "物理",
+      "化学",
+      "数学、物理",
+      "语文、英语",
+      "全科托管",
+      ...(appState.teachers || []).map((item) => item.subjects),
+      ...(appState.employees || []).map((item) => item.subjects),
+      ...(appState.courses || []).map((item) => item.subject)
+    ],
+    selectedValue
+  );
+}
+
+function staffGradeOptions(selectedValue = "初中") {
+  return choiceOptions(
+    [
+      "小学",
+      "初中",
+      "高中",
+      "初中、高一",
+      "高一、高二",
+      "初一、初二、初三",
+      "小初",
+      ...(appState.teachers || []).map((item) => item.grades),
+      ...(appState.employees || []).map((item) => item.grades),
+      ...(appState.courses || []).map((item) => item.grade)
+    ],
+    selectedValue
+  );
+}
+
 function subjectChoiceOptions(selectedValue = "数学") {
   return choiceOptions(
     [

@@ -232,11 +232,11 @@ function renderEmployeeForm() {
         <label>员工姓名<input name="name" required placeholder="例如 教务-刘老师" /></label>
         <label>手机号<input name="phone" maxlength="11" placeholder="11 位手机号" /></label>
         <label>员工类型<select name="employeeType"><option>正式员工</option><option>兼职员工</option><option>外聘老师</option></select></label>
-        <label>所属部门<input name="department" value="教务部" required /></label>
+        <label>所属部门<select name="department" required>${employeeDepartmentOptions("教务部")}</select></label>
         <label>校区角色<select name="roles">${roleOptions("教务/学管师")}</select></label>
         <label>是否教师<select name="isTeacher"><option>否</option><option>是</option></select></label>
-        <label>科目<input name="subjects" placeholder="例如 数学、物理" /></label>
-        <label>年级<input name="grades" placeholder="例如 初中、高一" /></label>
+        <label>科目<select name="subjects">${staffSubjectOptions("数学")}</select></label>
+        <label>年级<select name="grades">${staffGradeOptions("初中")}</select></label>
       </div>
       <button class="primary-action" type="submit">保存员工</button>
     </form>`;

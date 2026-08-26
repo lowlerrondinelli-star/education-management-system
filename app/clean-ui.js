@@ -41,6 +41,17 @@ function cleanUiFocusActivePanel() {
   panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
+function cleanUiManagedForm(form) {
+  return form?.matches?.(".operation-panel, form.master-card, form.schedule-batch");
+}
+
+function cleanUiClosePanelAfterSubmit(viewKey) {
+  if (!cleanUiActivePanels[viewKey]) return;
+  if (operationNotice?.view === viewKey && operationNotice?.tone === "red") return;
+  cleanUiActivePanels[viewKey] = "";
+  if (currentView === viewKey) renderView();
+}
+
 function cleanUiPanelsInBody(body) {
   const directPanels = [...body.children].filter((child) => child.matches?.(".operation-panel, form.master-card, form.schedule-batch"));
   const nestedPanels = [
@@ -131,6 +142,12 @@ document.addEventListener("click", (event) => {
     cleanUiActivePanels[cleanUiViewKey()] = "";
     renderView();
   }
+});
+
+document.addEventListener("submit", (event) => {
+  if (!cleanUiManagedForm(event.target)) return;
+  const viewKey = cleanUiViewKey();
+  setTimeout(() => cleanUiClosePanelAfterSubmit(viewKey), 0);
 });
 
 if (appContent) decorateCleanUiPanels();

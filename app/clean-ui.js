@@ -1,4 +1,5 @@
 const cleanUiActivePanels = {};
+const cleanUiActiveSupportPanels = {};
 
 const cleanUiPanelMeta = {
   orderForm: { label: "新增报名", hint: "办理报名、套餐和收款" },
@@ -14,6 +15,15 @@ const cleanUiPanelMeta = {
   followUpForm: { label: "新增跟进", hint: "记录回访和下次提醒" },
   employeeForm: { label: "新增员工", hint: "维护校区人员和岗位" },
   roleForm: { label: "新增角色", hint: "维护权限模板" }
+};
+
+const cleanUiSupportPanelMeta = {
+  schedule: [
+    { key: "quality", selector: ".schedule-quality", label: "排课健康", hint: "查看冲突和课节统计" },
+    { key: "signin", selector: ".lesson-signin-panel", label: "课前签到", hint: "查看到课和资金风险" },
+    { key: "resource", selector: ".schedule-resource-panel", label: "资源占用", hint: "查看老师和教室占用" },
+    { key: "list", selector: ".schedule-list-panel", label: "课表清单", hint: "按条件筛选全部课节" }
+  ]
 };
 
 function cleanUiViewKey() {
@@ -35,8 +45,12 @@ function cleanUiActivePanel() {
   return appContent.querySelector('.operation-panel[aria-expanded="true"], form.master-card[aria-expanded="true"], form.schedule-batch[aria-expanded="true"]');
 }
 
+function cleanUiActiveSupportPanel() {
+  return appContent.querySelector('[data-clean-support-panel][aria-expanded="true"]');
+}
+
 function cleanUiFocusActivePanel() {
-  const panel = cleanUiActivePanel();
+  const panel = cleanUiActivePanel() || cleanUiActiveSupportPanel();
   if (!panel) return;
   panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
@@ -99,6 +113,47 @@ function cleanUiActionDock(panels) {
     </div>`;
 }
 
+function cleanUiSupportPanelItems() {
+  const metas = cleanUiSupportPanelMeta[cleanUiViewKey()] || [];
+  return metas
+    .map((meta) => {
+      const panel = appContent.querySelector(meta.selector);
+      return panel ? { ...meta, panel } : null;
+    })
+    .filter(Boolean);
+}
+
+function cleanUiSupportPanelKey(item) {
+  return `${cleanUiViewKey()}:${item.key}`;
+}
+
+function cleanUiSupportDock(items) {
+  const activeKey = cleanUiActiveSupportPanels[cleanUiViewKey()] || "";
+  const buttons = items
+    .map((item) => {
+      const key = cleanUiSupportPanelKey(item);
+      const active = activeKey === key;
+      return `<button class="clean-action-button clean-support-button ${active ? "active" : ""}" type="button" data-clean-support-open="${escapeHtml(key)}">
+        <strong>${escapeHtml(item.label)}</strong>
+        <span>${escapeHtml(item.hint)}</span>
+      </button>`;
+    })
+    .join("");
+  const closeButton = activeKey ? `<button class="small-button clean-action-close" type="button" data-clean-support-close>收起面板</button>` : "";
+  return `
+    <div class="clean-support-group">
+      <div class="clean-action-title">
+        <span class="clean-action-kicker">查看面板</span>
+        <strong>课表辅助</strong>
+        <span class="muted">${activeKey ? "正在查看辅助面板。" : `已收起 ${items.length} 个辅助面板。`}</span>
+      </div>
+      <div class="clean-action-buttons">
+        ${buttons}
+        ${closeButton}
+      </div>
+    </div>`;
+}
+
 function decorateCleanUiPanels() {
   const bodies = [...appContent.querySelectorAll(".section-body")];
   bodies.forEach((body) => {
@@ -122,10 +177,28 @@ function decorateCleanUiPanels() {
   });
 }
 
+function decorateCleanUiSupportPanels() {
+  const items = cleanUiSupportPanelItems();
+  if (!items.length) return;
+  const activeKey = cleanUiActiveSupportPanels[cleanUiViewKey()] || "";
+  items.forEach((item) => {
+    const key = cleanUiSupportPanelKey(item);
+    item.panel.dataset.cleanSupportPanel = key;
+    item.panel.classList.toggle("clean-support-hidden", activeKey !== key);
+    item.panel.setAttribute("aria-expanded", activeKey === key ? "true" : "false");
+  });
+
+  const dock = appContent.querySelector(".clean-action-dock");
+  if (dock && !dock.querySelector(".clean-support-group")) {
+    dock.insertAdjacentHTML("beforeend", cleanUiSupportDock(items));
+  }
+}
+
 const baseRenderViewForCleanUi = renderView;
 renderView = function renderViewWithCleanUi() {
   baseRenderViewForCleanUi();
   decorateCleanUiPanels();
+  decorateCleanUiSupportPanels();
 };
 
 document.addEventListener("click", (event) => {
@@ -141,6 +214,23 @@ document.addEventListener("click", (event) => {
   if (closeButton) {
     cleanUiActivePanels[cleanUiViewKey()] = "";
     renderView();
+    return;
+  }
+
+  const supportButton = event.target.closest("[data-clean-support-open]");
+  if (supportButton) {
+    const key = supportButton.dataset.cleanSupportOpen;
+    const viewKey = cleanUiViewKey();
+    cleanUiActiveSupportPanels[viewKey] = cleanUiActiveSupportPanels[viewKey] === key ? "" : key;
+    renderView();
+    setTimeout(cleanUiFocusActivePanel, 30);
+    return;
+  }
+
+  const supportCloseButton = event.target.closest("[data-clean-support-close]");
+  if (supportCloseButton) {
+    cleanUiActiveSupportPanels[cleanUiViewKey()] = "";
+    renderView();
   }
 });
 
@@ -150,4 +240,7 @@ document.addEventListener("submit", (event) => {
   setTimeout(() => cleanUiClosePanelAfterSubmit(viewKey), 0);
 });
 
-if (appContent) decorateCleanUiPanels();
+if (appContent) {
+  decorateCleanUiPanels();
+  decorateCleanUiSupportPanels();
+}

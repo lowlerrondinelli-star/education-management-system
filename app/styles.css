@@ -446,6 +446,10 @@ button {
   display: none !important;
 }
 
+.clean-support-hidden {
+  display: none !important;
+}
+
 .clean-action-dock {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -513,6 +517,14 @@ button {
 
 .clean-action-close {
   align-self: stretch;
+}
+
+.clean-support-group {
+  border-top: 1px solid var(--line);
+  margin-top: 12px;
+  padding-top: 12px;
+  display: grid;
+  gap: 10px;
 }
 
 @media (min-width: 1051px) {

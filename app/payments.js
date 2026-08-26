@@ -381,6 +381,7 @@ renderOrderQuickForm = function renderOrderQuickFormWithPaymentFields() {
         <label>有效期至<input name="expireAt" type="date" value="${escapeHtml(addMonthsToToday(defaultPackage.months))}" required /></label>
         <label>收款方式<select name="payMethod">${typeof paymentMethodOptions === "function" ? paymentMethodOptions(defaultMethod) : "<option>微信</option><option>支付宝</option><option>银行转账</option><option>现金</option><option>线下收款</option>"}</select></label>
         <label>收款账户<select name="account">${typeof paymentAccountOptions === "function" ? paymentAccountOptions(defaultAccount) : `<option>${escapeHtml(defaultAccount)}</option>`}</select></label>
+        <label>收款备注<select name="note">${typeof paymentNoteOptions === "function" ? paymentNoteOptions("报名订单首付款") : "<option>报名订单首付款</option>"}</select></label>
         <label>支付单号<input name="tradeNo" placeholder="可选" /></label>
         <div class="muted order-recommend-hint" data-order-recommend-hint>${escapeHtml(orderRecommendationHint(defaultStudent, defaults))}</div>
         <div class="muted order-package-hint" data-order-package-hint>${escapeHtml(`${defaultPackage.note} 有效期至 ${addMonthsToToday(defaultPackage.months)}，老师仍可按实际收款微调。`)}</div>
@@ -405,6 +406,7 @@ function renderPaymentRows() {
         <td>${escapeHtml(payment.method)}</td>
         <td>${escapeHtml(payment.operator)}</td>
         <td>${escapeHtml(payment.paidAt)}</td>
+        <td>${escapeHtml(payment.note || payment.tradeNo || "-")}</td>
       </tr>`
     );
 }
@@ -450,7 +452,7 @@ renderOrders = function renderOrdersWithPayments() {
     <section class="section">
       <div class="section-head"><h3>收款流水</h3><span class="muted">自动记录报名收款和欠费补缴</span></div>
       <div class="section-body">
-        ${table(["流水号", "学员", "金额", "方式", "经办人", "收款时间"], renderPaymentRows())}
+        ${table(["流水号", "学员", "金额", "方式", "经办人", "收款时间", "备注"], renderPaymentRows())}
       </div>
     </section>`;
 };
@@ -535,6 +537,7 @@ enrollStudent = function enrollStudentWithPaymentRecord(formData) {
   const payMethod = text(formData.get("payMethod")) || "线下收款";
   const account = text(formData.get("account")).trim();
   const tradeNo = text(formData.get("tradeNo")).trim();
+  const note = text(formData.get("note")).trim() || "报名订单首付款";
   const paid = numberFromForm(formData, "paid");
   baseEnrollStudentForPayments(formData);
   const order = appState.orders.find((item) => !beforeIds.has(item.id));
@@ -556,7 +559,7 @@ enrollStudent = function enrollStudentWithPaymentRecord(formData) {
       beforeDebt: Number(order.debt || 0),
       afterDebt: Number(order.debt || 0),
       operator: order.owner || "前台老师",
-      note: "报名订单首付款"
+      note
     });
   }
   setNotice("orders", `${order.student} 已报名并记录收款 ${money(paid)}。`);

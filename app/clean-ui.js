@@ -38,6 +38,12 @@ const cleanUiSupportPanelMeta = {
     { key: "risk", selector: ".order-risk-panel", label: "订单风险", hint: "查看欠费课时和有效期" },
     { key: "payments", selector: ".payment-list-panel", label: "收款对账", hint: "查看收款退费流水" },
     { key: "hours", selector: ".hour-audit-panel", label: "课时核对", hint: "查看余额差异和欠费" }
+  ],
+  teacherDesk: [
+    { key: "prep", selector: ".lesson-prep-panel", label: "课前准备", hint: "查看名单请假和资金提醒" },
+    { key: "roster", selector: ".teacher-roster-panel", label: "班级花名册", hint: "查看老师班级和学员风险" },
+    { key: "execution", selector: ".lesson-execution-panel", label: "上课闭环", hint: "查看点名消课反馈进度" },
+    { key: "tasks", selector: ".teacher-task-panel", label: "任务清单", hint: "查看待点名反馈和异常" }
   ]
 };
 
@@ -45,7 +51,8 @@ const cleanUiSupportGroupMeta = {
   schedule: { title: "课表辅助" },
   students: { title: "学员辅助" },
   classes: { title: "班级辅助" },
-  orders: { title: "订单辅助" }
+  orders: { title: "订单辅助" },
+  teacherDesk: { title: "老师辅助" }
 };
 
 function cleanUiViewKey() {

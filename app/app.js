@@ -783,12 +783,12 @@ function classStatusOptions(selectedValue = "招生中") {
 
 function classTemplatePresets() {
   return {
-    standardSmall: { label: "标准小班（12人，扣1课时）", capacity: 12, deduct: 1, teacherHours: 1, suffix: "A班", status: "招生中" },
-    activeSmall: { label: "开课小班（16人，扣1课时）", capacity: 16, deduct: 1, teacherHours: 1, suffix: "A班", status: "开课中" },
-    premium: { label: "提高班（12人，扣1.5课时）", capacity: 12, deduct: 1.5, teacherHours: 1.5, suffix: "提高班", status: "招生中" },
-    sprint: { label: "冲刺班（20人，扣1课时）", capacity: 20, deduct: 1, teacherHours: 1, suffix: "冲刺班", status: "招生中", stage: "冲刺班" },
-    oneToOne: { label: "一对一班（1人，扣1课时）", capacity: 1, deduct: 1, teacherHours: 1, suffix: "一对一", status: "招生中" },
-    lecture: { label: "大班/讲座（60人，扣0.5课时）", capacity: 60, deduct: 0.5, teacherHours: 1, suffix: "讲座班", status: "招生中" },
+    standardSmall: { label: "标准小班（12人，扣1课时）", rule: "standardSmall", suffix: "A班", status: "招生中" },
+    activeSmall: { label: "开课小班（16人，扣1课时）", rule: "activeSmall", suffix: "A班", status: "开课中" },
+    premium: { label: "提高班（12人，扣1.5课时）", rule: "premium", suffix: "提高班", status: "招生中" },
+    sprint: { label: "冲刺班（20人，扣1课时）", rule: "sprint", suffix: "冲刺班", status: "招生中", stage: "冲刺班" },
+    oneToOne: { label: "一对一班（1人，扣1课时）", rule: "oneToOne", suffix: "一对一", status: "招生中" },
+    lecture: { label: "大班/讲座（60人，扣0.5课时）", rule: "lecture", suffix: "讲座班", status: "招生中" },
     custom: { label: "自定义班型", custom: true }
   };
 }
@@ -796,6 +796,33 @@ function classTemplatePresets() {
 function classTemplateOptions(selectedValue = "standardSmall") {
   return Object.entries(classTemplatePresets())
     .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function classRulePresets() {
+  return {
+    standardSmall: { label: "标准小班：12人 / 扣1 / 教师1", capacity: 12, deduct: 1, teacherHours: 1, hint: "适合常规小班课，学生每次扣 1 课时，教师计 1 课时。" },
+    activeSmall: { label: "满员小班：16人 / 扣1 / 教师1", capacity: 16, deduct: 1, teacherHours: 1, hint: "适合已开课、容量稍大的小班，收费和教师课时保持常规口径。" },
+    premium: { label: "提高精品：12人 / 扣1.5 / 教师1.5", capacity: 12, deduct: 1.5, teacherHours: 1.5, hint: "适合提高班、竞赛班或精品班，学生和教师均按 1.5 课时核算。" },
+    sprint: { label: "冲刺大班：20人 / 扣1 / 教师1", capacity: 20, deduct: 1, teacherHours: 1, hint: "适合考前冲刺和阶段集训，容量更高但课时口径保持常规。" },
+    oneToOne: { label: "一对一：1人 / 扣1 / 教师1", capacity: 1, deduct: 1, teacherHours: 1, hint: "适合一对一学员，班级容量固定为 1，便于排课和余额核对。" },
+    lecture: { label: "讲座体验：60人 / 扣0.5 / 教师1", capacity: 60, deduct: 0.5, teacherHours: 1, hint: "适合公开课、体验课和讲座，学生少扣课，教师按完整课时记录。" },
+    freeTrial: { label: "免费测评：8人 / 扣0 / 教师1", capacity: 8, deduct: 0, teacherHours: 1, hint: "适合招生测评或免费体验，不扣学生课时，只记录教师课时。" }
+  };
+}
+
+function classRuleOptions(selectedValue = "standardSmall") {
+  return Object.entries(classRulePresets())
+    .map(([key, item]) => `<option value="${escapeHtml(key)}" ${key === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function classRuleModeOptions(selectedValue = "auto") {
+  return [
+    ["auto", "按规则自动填写"],
+    ["manual", "手动微调数值"]
+  ]
+    .map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(label)}</option>`)
     .join("");
 }
 
@@ -858,9 +885,11 @@ function applyClassTemplate(form, forceName = false) {
   const preset = classTemplatePresets()[form?.elements?.template?.value] || classTemplatePresets().standardSmall;
   if (!form || preset.custom) return;
   if (preset.stage && form.elements.stage) form.elements.stage.value = preset.stage;
-  if (form.elements.capacity) form.elements.capacity.value = preset.capacity;
-  if (form.elements.deduct) form.elements.deduct.value = preset.deduct;
-  if (form.elements.teacherHours) form.elements.teacherHours.value = preset.teacherHours;
+  if (form.elements.rule && preset.rule) {
+    form.elements.rule.innerHTML = classRuleOptions(preset.rule);
+    form.elements.rule.value = preset.rule;
+    applyClassRule(form);
+  }
   if (form.elements.status) form.elements.status.value = preset.status;
   const generatedName = buildClassName(form.elements.course?.value, form.elements.stage?.value, form.elements.template?.value);
   const nameInput = form.elements.name;
@@ -868,6 +897,35 @@ function applyClassTemplate(form, forceName = false) {
     nameInput.value = generatedName;
     nameInput.dataset.autoName = generatedName;
   }
+}
+
+function applyClassRuleMode(form) {
+  if (!form) return;
+  const auto = (form.elements.ruleMode?.value || "auto") === "auto";
+  for (const name of ["capacity", "deduct", "teacherHours"]) {
+    if (form.elements[name]) form.elements[name].readOnly = auto;
+  }
+}
+
+function syncClassRuleHint(form) {
+  if (!form) return;
+  const rule = classRulePresets()[form.elements.rule?.value];
+  const hint = form.querySelector("[data-class-rule-hint]");
+  if (!hint) return;
+  const mode = (form.elements.ruleMode?.value || "auto") === "auto" ? "当前按规则锁定数值，需要特殊处理时可切换为手动微调。" : "当前允许手动微调，请确认容量、学生扣课和教师课时口径。";
+  hint.textContent = rule
+    ? `${rule.hint} ${mode}`
+    : `请确认容量、学生扣课和教师课时口径。${mode}`;
+}
+
+function applyClassRule(form) {
+  if (!form) return;
+  const rule = classRulePresets()[form.elements.rule?.value] || classRulePresets().standardSmall;
+  if (form.elements.capacity) form.elements.capacity.value = rule.capacity;
+  if (form.elements.deduct) form.elements.deduct.value = rule.deduct;
+  if (form.elements.teacherHours) form.elements.teacherHours.value = rule.teacherHours;
+  applyClassRuleMode(form);
+  syncClassRuleHint(form);
 }
 
 function subjectChoiceOptions(selectedValue = "数学") {
@@ -1543,25 +1601,30 @@ function renderClassCreateForm() {
   const defaultClass = appState.classes[0] || {};
   const defaultCourse = defaultClass.course || appState.courses?.[0]?.name || "常规课程";
   const defaultStage = defaultClass.stage || "秋季班";
-  const defaultName = buildClassName(defaultCourse, defaultStage, "standardSmall");
+  const defaultTemplate = "standardSmall";
+  const defaultRule = classRulePresets()[defaultTemplate];
+  const defaultName = buildClassName(defaultCourse, defaultStage, defaultTemplate);
   return `
     <form class="operation-panel" id="classForm">
       <div>
         <strong>新增班级</strong>
-        <span class="muted">选择班级模板后会自动生成班名、容量、扣课和教师课时。</span>
+        <span class="muted">选择班级模板和计课规则后会自动生成班名、容量、扣课和教师课时。</span>
       </div>
       <div class="operation-grid">
-        <label>班级模板<select name="template" id="classTemplateSelect">${classTemplateOptions("standardSmall")}</select></label>
+        <label>班级模板<select name="template" id="classTemplateSelect">${classTemplateOptions(defaultTemplate)}</select></label>
         <label>班级名称<input name="name" value="${escapeHtml(defaultName)}" data-auto-name="${escapeHtml(defaultName)}" required placeholder="例如 26秋初一数学A班" /></label>
         <label>关联课程<select name="course" id="classCourseSelect" required>${courseOptions(defaultCourse)}</select></label>
         <label>任课教师<select name="teacher" required>${teacherChoiceOptions(defaultClass.teacher || "任课老师")}</select></label>
         <label>助教<select name="assistant">${ownerChoiceOptions(defaultClass.assistant || "前台老师")}</select></label>
         <label>教室<select name="room" required>${roomChoiceOptions(defaultClass.room || "默认教室")}</select></label>
         <label>班型阶段<select name="stage" id="classStageSelect" required>${classStageOptions(defaultStage)}</select></label>
-        <label>满班人数<input name="capacity" type="number" min="1" value="12" required /></label>
-        <label>学生扣课<input name="deduct" type="number" min="0" step="0.5" value="1" required /></label>
-        <label>教师课时<input name="teacherHours" type="number" min="0" step="0.5" value="1" required /></label>
+        <label>规模/计课规则<select name="rule" id="classRuleSelect">${classRuleOptions(defaultTemplate)}</select></label>
+        <label>数值来源<select name="ruleMode" id="classRuleModeSelect">${classRuleModeOptions("auto")}</select></label>
+        <label>满班人数<input name="capacity" type="number" min="1" value="${escapeHtml(defaultRule.capacity)}" required readonly /></label>
+        <label>学生扣课<input name="deduct" type="number" min="0" step="0.5" value="${escapeHtml(defaultRule.deduct)}" required readonly /></label>
+        <label>教师课时<input name="teacherHours" type="number" min="0" step="0.5" value="${escapeHtml(defaultRule.teacherHours)}" required readonly /></label>
         <label>班级状态<select name="status">${classStatusOptions("招生中")}</select></label>
+        <div class="muted form-wide" data-class-rule-hint>${escapeHtml(`${defaultRule.hint} 当前按规则锁定数值，需要特殊处理时可切换为手动微调。`)}</div>
       </div>
       <div class="dialog-actions">
         <span class="muted">保存后可立即用于报名、分班和排课。</span>
@@ -2164,6 +2227,16 @@ document.addEventListener("change", (event) => {
 
   if (event.target.id === "classTemplateSelect") {
     applyClassTemplate(event.target.form || event.target.closest("form"), true);
+  }
+
+  if (event.target.id === "classRuleSelect") {
+    applyClassRule(event.target.form || event.target.closest("form"));
+  }
+
+  if (event.target.id === "classRuleModeSelect") {
+    const form = event.target.form || event.target.closest("form");
+    applyClassRuleMode(form);
+    syncClassRuleHint(form);
   }
 
   if (event.target.id === "classCourseSelect" || event.target.id === "classStageSelect") {

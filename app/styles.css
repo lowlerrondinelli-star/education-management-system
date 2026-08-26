@@ -596,6 +596,11 @@ button {
   min-width: 0;
 }
 
+.operation-grid input[readonly] {
+  background: #f8fafc;
+  color: var(--muted);
+}
+
 .filters {
   display: flex;
   gap: 10px;

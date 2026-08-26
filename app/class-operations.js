@@ -179,6 +179,25 @@ function renderClassOpsTags(classItem) {
   return `<div class="class-ops-tags">${classOpsActions(classItem).map((action) => tag(action.label, action.tone)).join("")}</div>`;
 }
 
+function classOpsDebtOrderButtons(classItem) {
+  const orders = classOpsOrders(classItem).filter((order) => Number(order.debt || 0) > 0);
+  return orders
+    .slice(0, 2)
+    .map((order) => `<button class="small-button" type="button" data-pay-order="${escapeHtml(order.id)}">${escapeHtml(order.student)}补缴</button>`)
+    .join("");
+}
+
+function classOpsActionButtons(classItem) {
+  const debtButtons = classOpsDebtOrderButtons(classItem);
+  return `
+    <button class="small-button" type="button" data-class-detail="${escapeHtml(classItem.name)}">详情</button>
+    <button class="small-button" type="button" data-class-schedule="${escapeHtml(classItem.name)}">排课</button>
+    <button class="small-button" type="button" data-class-assign="${escapeHtml(classItem.name)}">补员分班</button>
+    ${debtButtons}
+    <button class="small-button" type="button" data-class-orders="${escapeHtml(classItem.name)}">班级订单</button>
+  `;
+}
+
 function renderClassOpsRows(classes) {
   return classes.map((classItem) => {
     const students = classOpsStudents(classItem);
@@ -195,10 +214,7 @@ function renderClassOpsRows(classes) {
       <td class="class-ops-note">${renderClassOpsTags(classItem)}<span class="muted">${escapeHtml(primaryAction.note)}</span></td>
       <td>
         <div class="class-ops-actions">
-          <button class="small-button" type="button" data-class-detail="${escapeHtml(classItem.name)}">详情</button>
-          <button class="small-button" type="button" data-class-schedule="${escapeHtml(classItem.name)}">排课</button>
-          <button class="small-button" type="button" data-go="students">分班</button>
-          <button class="small-button" type="button" data-go="orders">订单</button>
+          ${classOpsActionButtons(classItem)}
         </div>
       </td>
     </tr>`;

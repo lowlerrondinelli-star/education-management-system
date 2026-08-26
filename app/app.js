@@ -29,6 +29,7 @@ let selectedSheetIndex = 0;
 let selectedStudentForOrder = "";
 let selectedStudentForClass = "";
 let selectedStudentForFollowUp = "";
+let selectedClassForAssign = "";
 let selectedClassForLesson = "";
 let selectedLessonForLeave = "";
 let operationNotice = null;
@@ -1120,6 +1121,44 @@ function openLessonFormForClass(className) {
   setTimeout(() => document.querySelector('[data-clean-panel-open="lessonForm"]')?.click(), 30);
 }
 
+function assignCandidateForClass(className) {
+  const classItem = getClass(className);
+  const candidates = appState.students.filter((student) => student.className !== className);
+  if (!classItem) return candidates[0] || appState.students[0] || null;
+  return (
+    candidates
+      .map((student) => ({
+        student,
+        score:
+          Number(student.className === "待分班") * 4 +
+          Number(student.course && student.course === classItem.course) * 3 +
+          Number(student.status === "已报名") * 2 +
+          Number(appState.orders.some((order) => order.student === student.name && order.className === className)) * 5
+      }))
+      .sort((left, right) => right.score - left.score || text(left.student.name).localeCompare(text(right.student.name), "zh-CN"))[0]?.student ||
+    candidates[0] ||
+    appState.students[0] ||
+    null
+  );
+}
+
+function openAssignFormForClass(className) {
+  if (!className) return;
+  selectedClassForAssign = className;
+  selectedStudentForClass = assignCandidateForClass(className)?.id || "";
+  setNotice("classes", `${className} 已带入快速分班表单，可选择学员后直接确认。`, "amber");
+  setView("classes");
+  setTimeout(() => document.querySelector('[data-clean-panel-open="assignForm"]')?.click(), 30);
+}
+
+function openOrdersForClass(className) {
+  if (!className) return;
+  searchTerm = className;
+  if (globalSearch) globalSearch.value = className;
+  setNotice("orders", `已筛选 ${className} 的订单与课时账户，可直接补缴或核对流水。`, "amber");
+  setView("orders");
+}
+
 function openFollowUpFormForStudent(studentId) {
   if (!studentId) return;
   selectedStudentForFollowUp = studentId;
@@ -1372,8 +1411,9 @@ function renderOrders() {
 
 function renderAssignPanel() {
   const selectedStudent = appState.students.find((item) => item.id === selectedStudentForClass);
-  const defaultStudent = selectedStudent || appState.students[0];
-  const defaultClassName = assignRecommendedClassName(defaultStudent);
+  const selectedClass = getClass(selectedClassForAssign);
+  const defaultStudent = selectedStudent || assignCandidateForClass(selectedClass?.name) || appState.students[0];
+  const defaultClassName = selectedClass?.name || assignRecommendedClassName(defaultStudent);
   return `
     <form class="operation-panel" id="assignForm">
       <div>
@@ -1450,7 +1490,7 @@ function syncAssignStudentDefaults(form) {
   const classSelect = form?.elements?.namedItem("className");
   const student = appState.students.find((item) => item.id === studentSelect?.value);
   if (!form || !student) return;
-  const className = assignRecommendedClassName(student);
+  const className = getClass(selectedClassForAssign)?.name || assignRecommendedClassName(student);
   if (classSelect) {
     classSelect.innerHTML = classOptions(className);
     classSelect.value = className;
@@ -2001,8 +2041,15 @@ document.addEventListener("click", (event) => {
   const classShortcut = event.target.closest("[data-student-class]");
   if (classShortcut) {
     selectedStudentForClass = classShortcut.dataset.studentClass;
+    selectedClassForAssign = "";
     setView("classes");
   }
+
+  const classAssignButton = event.target.closest("[data-class-assign]");
+  if (classAssignButton) openAssignFormForClass(classAssignButton.dataset.classAssign);
+
+  const classOrdersButton = event.target.closest("[data-class-orders]");
+  if (classOrdersButton) openOrdersForClass(classOrdersButton.dataset.classOrders);
 
   if (event.target.id === "newStudentInline" || event.target.id === "newStudentBtn") {
     refreshStudentFormChoices();
@@ -2050,6 +2097,13 @@ document.addEventListener("change", (event) => {
 
   if (event.target.name === "studentId" && event.target.closest("#assignForm")) {
     syncAssignStudentDefaults(event.target.form || event.target.closest("form"));
+  }
+
+  if (event.target.name === "className" && event.target.closest("#assignForm")) {
+    selectedClassForAssign = event.target.value;
+    const student = appState.students.find((item) => item.id === event.target.form?.elements?.studentId?.value);
+    const hint = event.target.form?.querySelector("[data-assign-class-hint]");
+    if (hint) hint.textContent = assignRecommendedClassHint(student, event.target.value);
   }
 
   if (event.target.id === "classTemplateSelect") {

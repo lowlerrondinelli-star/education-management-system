@@ -34,8 +34,8 @@ const authFormModules = {
 const authClickPolicies = [
   ["#newStudentBtn, #newStudentInline", "students", "新增学员"],
   ["[data-lead-status], [data-lead-trial], [data-lead-convert], [data-lead-lost]", "leads", "招生线索"],
-  ["[data-student-order], [data-pay-order], [data-finance-adjust]", "orders", "订单/收款"],
-  ["[data-student-class]", "classes", "分班"],
+  ["[data-student-order], [data-pay-order], [data-finance-adjust], [data-class-orders]", "orders", "订单/收款"],
+  ["[data-student-class], [data-class-assign]", "classes", "分班"],
   ["[data-student-follow]", "followUp", "续费跟进"],
   ["[data-attendance-lesson], [data-finish-lesson], [data-schedule-adjust]", "schedule", "排课/上课"],
   ["[data-feedback-lesson]", "feedback", "课后反馈"],

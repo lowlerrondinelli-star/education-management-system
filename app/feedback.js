@@ -300,6 +300,83 @@ function feedbackHomeworkOptions(selectedValue = "完成课后练习并订正错
   );
 }
 
+function feedbackScenarioPresets() {
+  return {
+    attendanceNormal: {
+      label: "按考勤常规反馈",
+      performance: "课堂稳定",
+      risk: "低",
+      homework: "完成课后练习并订正错题。",
+      messageTemplate: "normal"
+    },
+    progressPraise: {
+      label: "整体进步表扬",
+      performance: "进步明显",
+      risk: "低",
+      homework: "暂无额外作业，保持复习节奏。",
+      messageTemplate: "progress"
+    },
+    reviewFocus: {
+      label: "基础巩固提醒",
+      performance: "需加强",
+      risk: "中",
+      homework: "复盘本节错题，完成同类型巩固练习。",
+      messageTemplate: "review"
+    },
+    highRiskFollow: {
+      label: "高风险需回访",
+      performance: "需加强",
+      risk: "高",
+      homework: "整理错题本，标注不懂的问题下次课讲解。",
+      messageTemplate: "follow"
+    },
+    absenceMakeup: {
+      label: "缺勤补看课堂",
+      performance: "缺勤未评",
+      risk: "中",
+      homework: "补看课堂内容，完成基础题训练。",
+      messageTemplate: "normal"
+    }
+  };
+}
+
+function feedbackScenarioOptions(selectedValue = "attendanceNormal") {
+  return Object.entries(feedbackScenarioPresets())
+    .map(([value, item]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function feedbackScenarioMessage(studentName, lesson, attendanceStatus, scenario) {
+  if (scenario.messageTemplate === "follow") return `${studentName} 近期学习节奏需要继续跟进，建议老师课后与家长保持沟通。`;
+  return feedbackTemplateMessage(studentName, lesson, attendanceStatus, scenario.messageTemplate);
+}
+
+function applyFeedbackScenario(form, lesson, scenarioKey) {
+  if (!form || !lesson) return;
+  const scenario = feedbackScenarioPresets()[scenarioKey];
+  if (!scenario) return;
+  form.querySelectorAll("[data-feedback-student-key]").forEach((row) => {
+    const key = row.dataset.feedbackStudentKey;
+    const attendanceStatus = text(row.dataset.attendance);
+    const studentName = feedbackStudentNameForKey(form, key);
+    const isAbsent = ["请假", "旷课", "未点名"].includes(attendanceStatus);
+    const performance = scenarioKey === "attendanceNormal" && isAbsent ? "缺勤未评" : scenario.performance;
+    const risk = scenarioKey === "attendanceNormal" && isAbsent ? "中" : scenario.risk;
+    const homework = scenarioKey === "attendanceNormal" && isAbsent ? "补看课堂内容，完成基础题训练。" : scenario.homework;
+    const message = feedbackScenarioMessage(studentName, lesson, attendanceStatus, scenario);
+
+    const performanceSelect = form.querySelector(`[name="performance:${CSS.escape(key)}"]`);
+    const riskSelect = form.querySelector(`[name="risk:${CSS.escape(key)}"]`);
+    const homeworkSelect = form.querySelector(`[name="homework:${CSS.escape(key)}"]`);
+    const messageSelect = form.querySelector(`[name="message:${CSS.escape(key)}"]`);
+    if (performanceSelect) performanceSelect.value = performance;
+    if (riskSelect) riskSelect.value = risk;
+    if (homeworkSelect) homeworkSelect.value = homework;
+    if (messageSelect) messageSelect.value = message;
+  });
+  updateFeedbackDraftSummary(form);
+}
+
 function renderFeedbackDialog(lessonId) {
   ensureFeedbackData();
   const lesson = appState.lessons.find((item) => item.id === lessonId);
@@ -344,6 +421,7 @@ function renderFeedbackDialog(lessonId) {
       </div>
       <div class="feedback-dialog-body">
         <div class="feedback-quickbar">
+          <label>反馈场景模板<select name="feedbackScenario">${feedbackScenarioOptions("attendanceNormal")}</select></label>
           <div class="feedback-actions">
             <button class="small-button" type="button" data-feedback-bulk-performance="课堂稳定">全部稳定</button>
             <button class="small-button" type="button" data-feedback-bulk-performance="需加强">全部需加强</button>
@@ -591,6 +669,13 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  if (event.target.name === "feedbackScenario" && event.target.closest("#feedbackForm")) {
+    const form = event.target.form;
+    const lesson = appState.lessons.find((item) => item.id === form.dataset.lessonId);
+    applyFeedbackScenario(form, lesson, event.target.value);
+    return;
+  }
+
   if (!event.target.matches('select[name^="performance:"], select[name^="risk:"], select[name^="message:"], select[name^="homework:"]')) return;
   const form = event.target.closest("#feedbackForm");
   if (form) updateFeedbackDraftSummary(form);

@@ -1141,22 +1141,91 @@ function renderOrders() {
 
 function renderAssignPanel() {
   const selectedStudent = appState.students.find((item) => item.id === selectedStudentForClass);
-  const defaultClassName = selectedStudent?.className || "";
+  const defaultStudent = selectedStudent || appState.students[0];
+  const defaultClassName = assignRecommendedClassName(defaultStudent);
   return `
     <form class="operation-panel" id="assignForm">
       <div>
         <strong>快速分班</strong>
-        <span class="muted">适合前台把已报名或意向学员放入正式班级。</span>
+        <span class="muted">选择学员后自动推荐课程、年级和订单更匹配的班级。</span>
       </div>
       <div class="operation-grid compact">
-        <label>学员<select name="studentId" required>${studentOptions(selectedStudentForClass)}</select></label>
+        <label>学员<select name="studentId" required>${studentOptions(defaultStudent?.id || "")}</select></label>
         <label>目标班级<select name="className" required>${classOptions(defaultClassName)}</select></label>
+        <div class="form-wide muted" data-assign-class-hint>${escapeHtml(assignRecommendedClassHint(defaultStudent, defaultClassName))}</div>
       </div>
       <div class="dialog-actions">
         <span class="muted">班级人数会按学员档案自动重算。</span>
         <button class="primary-action" type="submit">确认分班</button>
       </div>
     </form>`;
+}
+
+function assignClassOpenSeats(classItem) {
+  if (!classItem) return 0;
+  const currentCount = appState.students.filter((student) => student.className === classItem.name).length;
+  return Math.max(0, Number(classItem.capacity || 0) - currentCount);
+}
+
+function assignFallbackClass(student) {
+  if (!student) return appState.classes[0] || {};
+  const orderClass = appState.orders.find((order) => order.student === student.name && getClass(order.className))?.className;
+  if (orderClass) return getClass(orderClass);
+  const currentClass = getClass(student.className);
+  if (currentClass) return currentClass;
+  const course = text(student.course);
+  const grade = text(student.grade).replace("年级", "");
+  return (
+    appState.classes
+      .filter((classItem) => assignClassOpenSeats(classItem) > 0)
+      .map((classItem) => ({
+        classItem,
+        score:
+          Number(course && classItem.course === course) * 3 +
+          Number(course && text(classItem.course).includes(course)) * 2 +
+          Number(grade && text(classItem.name).includes(grade))
+      }))
+      .sort((left, right) => right.score - left.score || assignClassOpenSeats(right.classItem) - assignClassOpenSeats(left.classItem))[0]?.classItem || appState.classes[0] || {}
+  );
+}
+
+function assignRecommendedClass(student) {
+  if (!student) return appState.classes[0] || {};
+  if (typeof classAdvisorBestClass === "function") return classAdvisorBestClass(student)?.classItem || assignFallbackClass(student);
+  return assignFallbackClass(student);
+}
+
+function assignRecommendedClassName(student) {
+  return assignRecommendedClass(student)?.name || "";
+}
+
+function assignRecommendedClassHint(student, className) {
+  if (!student) return "请选择学员，系统会按课程、年级、订单班级和容量推荐目标班级。";
+  const classItem = getClass(className);
+  if (!classItem) return "当前没有可用班级，请先新增班级。";
+  const seats = assignClassOpenSeats(classItem);
+  const orderMatched = appState.orders.some((order) => order.student === student.name && order.className === classItem.name);
+  const courseMatched = student.course && classItem.course === student.course;
+  const parts = [];
+  if (orderMatched) parts.push("已有订单指向该班级");
+  if (courseMatched) parts.push("课程一致");
+  if (!orderMatched && !courseMatched) parts.push("按年级/容量综合推荐");
+  parts.push(`剩余 ${seats} 个名额`);
+  return `${student.name} 推荐分入 ${classItem.name}：${parts.join("，")}。`;
+}
+
+function syncAssignStudentDefaults(form) {
+  const studentSelect = form?.elements?.namedItem("studentId");
+  const classSelect = form?.elements?.namedItem("className");
+  const student = appState.students.find((item) => item.id === studentSelect?.value);
+  if (!form || !student) return;
+  const className = assignRecommendedClassName(student);
+  if (classSelect) {
+    classSelect.innerHTML = classOptions(className);
+    classSelect.value = className;
+  }
+  const hint = form.querySelector("[data-assign-class-hint]");
+  if (hint) hint.textContent = assignRecommendedClassHint(student, className);
 }
 
 function renderClassCreateForm() {
@@ -1733,6 +1802,10 @@ document.addEventListener("change", (event) => {
 
   if (event.target.id === "studentClassSelect") {
     syncStudentClassCourse();
+  }
+
+  if (event.target.name === "studentId" && event.target.closest("#assignForm")) {
+    syncAssignStudentDefaults(event.target.form || event.target.closest("form"));
   }
 
   if (event.target.id === "classTemplateSelect") {

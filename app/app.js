@@ -313,6 +313,7 @@ function leaveReasonOptions(selectedValue = "家长请假，需后续安排补�
       "临时家庭安排，待家长确认补课时间",
       "交通/天气原因无法到课",
       "迟到转请假，本节不消课",
+      "长期停课/外出，需教务确认补课方案",
       "其他原因，线下备注"
     ],
     selectedValue

@@ -89,6 +89,93 @@ function leaveLessonOptions(selectedId = "") {
     .join("");
 }
 
+function leaveTypeOptions(selectedValue = "事假") {
+  return ["事假", "病假", "迟到转请假", "其他"]
+    .map((value) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(value)}</option>`)
+    .join("");
+}
+
+function leaveMakeupPlanOptions(selectedValue = "需要补课") {
+  return ["需要补课", "不需要补课", "待家长确认"]
+    .map((value) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(value)}</option>`)
+    .join("");
+}
+
+function leaveScenarioPresets() {
+  return {
+    sickMakeup: {
+      label: "病假：需要补课",
+      leaveType: "病假",
+      contact: "家长",
+      makeupPlan: "需要补课",
+      reason: "学生生病，需请假补课"
+    },
+    personalMakeup: {
+      label: "事假：需要补课",
+      leaveType: "事假",
+      contact: "家长",
+      makeupPlan: "需要补课",
+      reason: "临时家庭安排，待家长确认补课时间"
+    },
+    schoolConflict: {
+      label: "学校活动冲突",
+      leaveType: "事假",
+      contact: "妈妈",
+      makeupPlan: "待家长确认",
+      reason: "学校活动冲突，需改期补课"
+    },
+    lateNoDeduct: {
+      label: "迟到转请假",
+      leaveType: "迟到转请假",
+      contact: "老师代登记",
+      makeupPlan: "不需要补课",
+      reason: "迟到转请假，本节不消课"
+    },
+    weatherNoMakeup: {
+      label: "天气/交通无需补课",
+      leaveType: "其他",
+      contact: "家长",
+      makeupPlan: "不需要补课",
+      reason: "交通/天气原因无法到课"
+    },
+    longLeaveConfirm: {
+      label: "长期停课待确认",
+      leaveType: "其他",
+      contact: "前台代登记",
+      makeupPlan: "待家长确认",
+      reason: "长期停课/外出，需教务确认补课方案"
+    }
+  };
+}
+
+function leaveScenarioOptions(selectedValue = "sickMakeup") {
+  return Object.entries(leaveScenarioPresets())
+    .map(([value, item]) => `<option value="${escapeHtml(value)}" ${value === selectedValue ? "selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function applyLeaveScenario(form, scenario) {
+  if (!form) return;
+  const preset = leaveScenarioPresets()[scenario];
+  if (!preset) return;
+  if (form.elements.leaveType) {
+    form.elements.leaveType.innerHTML = leaveTypeOptions(preset.leaveType);
+    form.elements.leaveType.value = preset.leaveType;
+  }
+  if (form.elements.contact && typeof leaveContactOptions === "function") {
+    form.elements.contact.innerHTML = leaveContactOptions(preset.contact);
+    form.elements.contact.value = preset.contact;
+  }
+  if (form.elements.makeupPlan) {
+    form.elements.makeupPlan.innerHTML = leaveMakeupPlanOptions(preset.makeupPlan);
+    form.elements.makeupPlan.value = preset.makeupPlan;
+  }
+  if (form.elements.reason && typeof leaveReasonOptions === "function") {
+    form.elements.reason.innerHTML = leaveReasonOptions(preset.reason);
+    form.elements.reason.value = preset.reason;
+  }
+}
+
 function leaveForRow(id) {
   ensureLeaveData();
   return appState.leaveRequests.find((item) => item.id === id);
@@ -121,15 +208,16 @@ function renderLeaveQuickForm() {
         <span class="muted">适合前台接到家长电话后先登记，再审批并安排补课。</span>
       </div>
       <div class="operation-grid">
+        <label>请假场景模板<select name="leaveScenario">${leaveScenarioOptions("sickMakeup")}</select></label>
         <label>学员<select name="studentId" required>${leaveStudentOptions()}</select></label>
         <label>关联课节<select name="lessonId" required>${leaveLessonOptions()}</select></label>
-        <label>请假类型<select name="leaveType"><option>事假</option><option>病假</option><option>迟到转请假</option><option>其他</option></select></label>
+        <label>请假类型<select name="leaveType">${leaveTypeOptions("病假")}</select></label>
         <label>申请人<select name="contact" required>${typeof leaveContactOptions === "function" ? leaveContactOptions("家长") : "<option>家长</option>"}</select></label>
         <label>处理人<select name="operator" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions("前台老师") : "<option>前台老师</option>"}</select></label>
-        <label>补课建议<select name="makeupPlan"><option>需要补课</option><option>不需要补课</option><option>待家长确认</option></select></label>
+        <label>补课建议<select name="makeupPlan">${leaveMakeupPlanOptions("需要补课")}</select></label>
       </div>
       <div class="form-grid" style="grid-template-columns:1fr;margin:0">
-        <label>原因备注<select name="reason" required>${typeof leaveReasonOptions === "function" ? leaveReasonOptions("家长请假，需后续安排补课") : "<option>家长请假，需后续安排补课</option>"}</select></label>
+        <label>原因备注<select name="reason" required>${typeof leaveReasonOptions === "function" ? leaveReasonOptions("学生生病，需请假补课") : "<option>学生生病，需请假补课</option>"}</select></label>
       </div>
       <div class="dialog-actions">
         <span class="muted">审批通过后会同步考勤状态为请假，不产生消课。</span>
@@ -449,14 +537,15 @@ function renderScheduleLeaveDialog(lessonId) {
       </div>
       <input name="lessonId" value="${escapeHtml(lesson.id)}" hidden />
       <div class="form-grid">
+        <label>请假场景模板<select name="leaveScenario">${leaveScenarioOptions("sickMakeup")}</select></label>
         <label>请假学员<select name="studentId" required>${students.map((student) => `<option value="${escapeHtml(student.id)}">${escapeHtml(student.name)}（余额 ${escapeHtml(student.balance)}）</option>`).join("")}</select></label>
-        <label>请假类型<select name="leaveType"><option>事假</option><option>病假</option><option>迟到转请假</option><option>其他</option></select></label>
+        <label>请假类型<select name="leaveType">${leaveTypeOptions("病假")}</select></label>
         <label>申请人<select name="contact" required>${typeof leaveContactOptions === "function" ? leaveContactOptions("家长") : "<option>家长</option>"}</select></label>
         <label>处理人<select name="operator" required>${typeof operatorChoiceOptions === "function" ? operatorChoiceOptions("前台老师") : "<option>前台老师</option>"}</select></label>
-        <label>补课建议<select name="makeupPlan"><option>需要补课</option><option>不需要补课</option><option>待家长确认</option></select></label>
+        <label>补课建议<select name="makeupPlan">${leaveMakeupPlanOptions("需要补课")}</select></label>
       </div>
       <div class="form-grid" style="grid-template-columns:1fr;">
-        <label>原因备注<select name="reason" required>${typeof leaveReasonOptions === "function" ? leaveReasonOptions("家长请假，需后续安排补课") : "<option>家长请假，需后续安排补课</option>"}</select></label>
+        <label>原因备注<select name="reason" required>${typeof leaveReasonOptions === "function" ? leaveReasonOptions("学生生病，需请假补课") : "<option>学生生病，需请假补课</option>"}</select></label>
       </div>
       <div class="dialog-actions">
         <span class="muted">保存后可到“请假补课”页面审批。</span>
@@ -575,6 +664,11 @@ document.addEventListener("submit", (event) => {
     event.preventDefault();
     saveLeaveMakeup(event.target);
   }
+});
+
+document.addEventListener("change", (event) => {
+  if (event.target.name !== "leaveScenario" || !event.target.closest("#leaveRequestForm")) return;
+  applyLeaveScenario(event.target.form, event.target.value);
 });
 
 ensureLeaveData();
